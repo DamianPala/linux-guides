@@ -58,11 +58,10 @@ EOF
 source ~/.bashrc
 ```
 
-- `cat` → plain output with colors (syntax highlighting only)
-- `bat` → full UI (line numbers, git changes, grid, pager)
+- `cat` → plain output with colors
+- `bat` → full UI (line numbers, git changes, pager)
 
-
-
+---
 
 ## Misc Apps
 
@@ -79,60 +78,36 @@ echo "deb [signed-by=/usr/share/keyrings/githubcli-archive-keyring.gpg] https://
 sudo apt update
 
 sudo apt install -y \
-  baobab \
-  gimp \
-  keepassxc \
-  meld \
-  qtqr \
-  sqlitebrowser \
-  p7zip-full p7zip-rar \
-  simplescreenrecorder \
-  k3b \
-  obs-studio \
-  remmina \
-  build-essential cmake ninja-build \
-  clang clang-format clang-tidy \
-  git gh \
-  jq fzf \
-  qemu-system-x86 qemu-utils \
-  htop iotop nload iftop nethogs \
-  nmap socat iperf3 \
-  sshfs sshpass wireguard \
-  tmux screen \
-  pv \
-  trash-cli \
-  qbittorrent
+  baobab gimp k3b keepassxc meld obs-studio \
+  qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
+  build-essential clang clang-format clang-tidy cmake git gh ninja-build \
+  fzf htop iftop iotop jq nethogs nload p7zip-full p7zip-rar pv \
+  iperf3 nmap qemu-system-x86 qemu-utils socat sshfs sshpass wireguard \
+  screen tmux trash-cli
 ```
 
 ### cargo
 
 ```bash
 cargo install --locked \
-  ripgrep \
-  fd-find \
-  bat \
-  eza \
-  du-dust \
-  git-delta \
-  bottom \
-  tealdeer
+  bat bottom du-dust eza fd-find git-delta ripgrep tealdeer uv
 ```
 
 ### snap
 
 ```bash
+sudo snap install audacity
+sudo snap install chromium
+sudo snap install code --classic
 sudo snap install discord
+sudo snap install glow
 sudo snap install pycharm-community --classic
+sudo snap install sublime-text --classic
 sudo snap install telegram-desktop
 sudo snap install zoom-client
-sudo snap install code --classic
-sudo snap install chromium
-sudo snap install audacity
-sudo snap install glow
-sudo snap install sublime-text --classic
 ```
 
-### npx
+### npm
 
 ```bash
 sudo npm install -g @anthropic-ai/claude-code@latest
@@ -145,24 +120,16 @@ sudo npm install -g ccusage
 | App | Download |
 |-----|----------|
 | Anki | https://apps.ankiweb.net/ |
-| VirtualBox | https://www.virtualbox.org/wiki/Linux_Downloads |
-| LibreCAD | https://github.com/LibreCAD/LibreCAD/releases |
-| FreeCAD | https://www.freecad.org/downloads.php (AppImage) |
 | Calibre | https://calibre-ebook.com/download_linux |
-| Obsidian | https://obsidian.md/download |
 | Chrome | https://www.google.com/chrome/ |
-| Signal | https://signal.org/download/linux/ |
-| Mullvad VPN | https://mullvad.net/en/download/vpn/linux |
-| Synology Drive | https://www.synology.com/en-global/support/download |
-| NoMachine | https://www.nomachine.com/download |
-| Speedtest CLI | https://www.speedtest.net/apps/cli |
+| FreeCAD | https://www.freecad.org/downloads.php (AppImage) |
 | KiCad | https://www.kicad.org/download/linux/ |
-
-
-
-
-
-
-
-
+| LibreCAD | https://github.com/LibreCAD/LibreCAD/releases |
+| Mullvad VPN | https://mullvad.net/en/download/vpn/linux |
+| NoMachine | https://www.nomachine.com/download |
+| Obsidian | https://obsidian.md/download |
+| Signal | https://signal.org/download/linux/ |
+| Speedtest CLI | https://www.speedtest.net/apps/cli |
+| Synology Drive | https://www.synology.com/en-global/support/download |
+| VirtualBox | https://www.virtualbox.org/wiki/Linux_Downloads |
 
