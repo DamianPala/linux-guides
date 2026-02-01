@@ -3,6 +3,8 @@ Setup notes and configurations for Linux, Ubuntu, KDE and general how-tos.
 
 ## Guides
 
-- [eza](eza.md)
-- [LazyVim](lazyvim.md)
 - [Zellij](zellij.md)
+- [LazyVim](lazyvim.md)
+- [eza](eza.md)
+- [lazygit](tools.md#lazygit)
+- [bat](tools.md#bat)

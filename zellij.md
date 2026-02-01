@@ -111,6 +111,7 @@ serialize_pane_viewport true
 scrollback_lines_to_serialize 100000
 serialization_interval 60
 pane_frames false
+theme "ao"
 EOF
 ```
 
