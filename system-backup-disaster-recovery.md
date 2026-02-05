@@ -6,7 +6,7 @@ The result is a system where even if your laptop gets compromised, you can recov
 
 ## Security Model
 
-This backup system assumes **your laptop will eventually be compromised**. Ransomware, stolen credentials, malicious software—any of these could give an attacker full control of your machine, including your backup credentials. The architecture is designed so that even a fully compromised laptop cannot destroy your backups.
+This backup system is designed for the worst-case scenario: **a fully compromised laptop**. Ransomware, stolen credentials, malicious software—any of these could give an attacker full control of your machine, including your backup credentials. The architecture ensures that even in this scenario, your backups remain safe.
 
 **The core principle: Laptop is untrusted, NAS is trusted.**
 
