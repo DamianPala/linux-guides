@@ -168,6 +168,7 @@ Settings to configure after a fresh install (System Settings app).
 - KWin → Move Window to Center: `Meta+C`
 - Custom Shortcuts:
   - Restart KDE: `Meta+F9` → `sh ~/scripts/restart_kde.sh`
+  - Clean Copy AI: `Ctrl+Shift+X` → `wl-paste | sed 's/^  //; s/[[:space:]]*$//' | wl-copy`
 
 ### Autostart
 
@@ -190,9 +191,17 @@ Only add if not using KDE session restore:
 
 ### Power Management
 
-- Energy Saving → Dim screen: off
-- Energy Saving → Screen energy saving: off
-- Energy Saving → Suspend session: off
+Energy Saving:
+
+**On AC:**
+- Dim screen: 15 min
+- Screen energy saving: off
+- Suspend session: off
+
+**On Battery:**
+- Dim screen: 10 min
+- Screen energy saving: 15 min
+- Suspend session: 120 min
 
 ### Other
 
