@@ -134,3 +134,88 @@ udevadm monitor --property --subsystem-match=power_supply
 ```
 
 ---
+
+## KDE Plasma Settings
+
+Settings to configure after a fresh install (System Settings app).
+
+### Appearance
+
+- Global Theme → Breeze Dark
+- Plasma Style → Breeze Dark
+- Colors → (match theme)
+
+### Workspace Behavior
+
+- Desktop Effects → Virtual Desktop Switching Animation → Slide
+- Desktop Effects → Window Management → Desktop Grid
+- Screen Edges:
+  - Top Left → Desktop Grid
+  - Top → Toggle Overview
+  - Activation delay: 100 ms
+  - Reactivation delay: 250 ms
+- Screen Locking → Lock automatically after 10 min
+- Screen Locking → Allow unlocking without password for 10 s
+- Virtual Desktops → Row 1: Main, Investments · Row 2: Work, Learn
+
+### Window Management
+
+- Task Switcher → Visualization: Thumbnail Grid
+
+### Shortcuts
+
+- Power Management → Sleep: `Meta+S`
+- KWin → Move Window to Center: `Meta+C`
+- Custom Shortcuts:
+  - Restart KDE: `Meta+F9` → `sh ~/scripts/restart_kde.sh`
+
+### Autostart
+
+Only add if not using KDE session restore:
+
+- Discord, Signal, Telegram Desktop
+- SmartGit, Synology, Flameshot
+
+### Input Devices
+
+- Keyboard → Layouts: Montenegrin variant Latin
+- Keyboard → Advanced → Switch layout: `Win+Space`
+- Mouse → (adjust to preference)
+- Touchpad → Tap-to-click, Invert scroll direction (natural)
+
+### Display and Monitor
+
+- Gamma → 1.00
+- Night Color → Custom times, 2500K, 20:30–5:30, 30 min transition
+
+### Power Management
+
+- Energy Saving → Dim screen: off
+- Energy Saving → Screen energy saving: off
+- Energy Saving → Suspend session: off
+
+### Other
+
+- Default Applications → Web browser: Google Chrome
+- Users → create `tester` account
+
+---
+
+## Hardware Clock: UTC (Dual-Boot)
+
+On dual-boot with Windows, clocks get out of sync — Windows uses localtime, Linux uses UTC, so each boot "corrects" the clock wrong.
+
+```bash
+timedatectl set-local-rtc 0
+
+# Verify — should show "RTC in local TZ: no"
+timedatectl
+```
+
+If Windows still resets the clock, tell it to use UTC too (admin PowerShell):
+
+```powershell
+reg add "HKEY_LOCAL_MACHINE\SYSTEM\CurrentControlSet\Control\TimeZoneInformation" /v RealTimeIsUniversal /t REG_DWORD /d 1 /f
+```
+
+---
