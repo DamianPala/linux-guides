@@ -81,8 +81,8 @@ sudo apt install -y \
   baobab gimp k3b keepassxc meld obs-studio \
   qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build \
-  fzf htop iftop iotop jq nethogs nload p7zip-full p7zip-rar pv \
-  iperf3 nmap qemu-system-x86 qemu-utils socat sshfs sshpass wireguard \
+  dislocker fzf htop iftop iotop jq lm-sensors nethogs nload p7zip-full p7zip-rar pv \
+  iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
 ```
 
