@@ -62,6 +62,21 @@ Don't restore these wholesale. Browse through both directories manually on the o
 | `applications/` | Custom `.desktop` files |
 | `Anki2/` | Flashcard decks, study progress, media |
 
+### Review `~/`
+
+Before you move on, `ls ~/` and check for anything not covered above:
+
+- `~/Documents`
+- `~/Downloads`
+- `~/Desktop`
+- `~/dev-tools`
+- `~/projects`
+- `~/Applications`
+- `/opt` - system-wide manual installs
+- `~/keys`, 
+- `~/scripts`
+- `licenses` - browse your stored licenses
+
 ---
 
 ## Dotfiles
