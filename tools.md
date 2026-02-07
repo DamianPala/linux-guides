@@ -11,7 +11,7 @@ Terminal UI for Git. Makes staging, committing, branching, and rebasing faster t
 ### Install
 
 ```bash
-curl -sL $(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep -Po '"browser_download_url": "\K[^"]*Linux_x86_64.tar.gz') | tar xz lazygit && sudo install lazygit /usr/local/bin && rm lazygit && cargo install git-delta
+curl -sL $(curl -s https://api.github.com/repos/jesseduffield/lazygit/releases/latest | grep -Po '"browser_download_url": "\K[^"]*linux_x86_64.tar.gz') | tar xz lazygit && sudo install lazygit /usr/local/bin && rm lazygit && cargo install git-delta
 ```
 
 ### Configuration
@@ -81,7 +81,7 @@ sudo apt install -y \
   baobab gimp k3b keepassxc meld obs-studio \
   qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build \
-  dislocker fzf htop iftop iotop jq lm-sensors nethogs nload p7zip-full p7zip-rar pv \
+  dislocker fzf htop iftop iotop jq lm-sensors nethogs nload npm p7zip-full p7zip-rar pv \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
 ```
@@ -89,6 +89,8 @@ sudo apt install -y \
 ### cargo
 
 ```bash
+curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
+source ~/.cargo/env
 cargo install --locked \
   bat bottom du-dust eza fd-find git-delta ripgrep tealdeer uv
 ```
@@ -110,9 +112,10 @@ sudo snap install zoom-client
 ### npm
 
 ```bash
-sudo npm install -g @anthropic-ai/claude-code@latest
-sudo npm install -g @openai/codex@latest
-sudo npm install -g ccusage
+npm config set prefix ~/.local
+npm install -g @anthropic-ai/claude-code@latest
+npm install -g @openai/codex@latest
+npm install -g ccusage
 ```
 
 ### Separate
