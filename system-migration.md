@@ -47,6 +47,7 @@ Don't restore these wholesale. Browse through both directories manually on the o
 | `kglobalshortcutsrc` | Global keyboard shortcuts — review manually |
 | `kcminputrc` | Mouse/touchpad/keyboard settings — review manually |
 | `konsolerc` + `konsolesshconfig` | Konsole terminal settings |
+| `lazygit` | Lazygit config |
 
 **Warning:** KDE config files (`kglobalshortcutsrc`, `kcminputrc`, `konsolerc`) can change structure between Plasma major versions (e.g. 5 → 6). Don't blindly copy — open both old and new files side by side and transfer the values you need.
 
@@ -212,6 +213,7 @@ sudo snap refresh firefox
 snap download firefox
 mv firefox_*.snap firefox_*.assert ~/migration/
 cp -r ~/snap/firefox/common/.mozilla ~/migration/firefox-snap-profile
+firefox --ProfileManager   # select the old profile and set as default
 ```
 
 ```bash
@@ -220,6 +222,7 @@ sudo snap ack ~/migration/firefox_*.assert
 sudo snap install ~/migration/firefox_*.snap
 # run Firefox once, close it, then:
 cp -r ~/migration/firefox-snap-profile/.mozilla ~/snap/firefox/common/.mozilla
+firefox --ProfileManager   # select the old profile and set as default
 ```
 
 #### .deb (Mozilla APT repo)
@@ -237,6 +240,7 @@ cp -r ~/.mozilla ~/migration/.mozilla
 sudo apt install ~/migration/firefox_*.deb
 # run Firefox once, close it, then:
 cp -r ~/migration/.mozilla ~/.mozilla
+firefox --ProfileManager   # select the old profile and set as default
 ```
 
 #### Manual binary
@@ -257,12 +261,54 @@ sudo snap install firefox --revision=<REVISION>
 sudo snap refresh firefox --hold   # prevent auto-update until profile is restored
 # run Firefox once, close it, then:
 cp -r ~/migration/.mozilla ~/snap/firefox/common/.mozilla
+firefox --ProfileManager   # select the old profile and set as default
 sudo snap refresh firefox --unhold
+```
+
+### Thunderbird
+
+Profiles are forward-compatible — no need to match versions.
+
+Figure out how Thunderbird is installed:
+
+```bash
+snap list thunderbird
+apt list --installed thunderbird 2>/dev/null
+```
+
+#### Snap
+
+```bash
+# Export (old system)
+cp -r ~/.thunderbird ~/migration/.thunderbird
+```
+
+```bash
+# Restore (new system)
+sudo snap install thunderbird
+# run Thunderbird once, close it, then:
+cp -r ~/migration/.thunderbird/* ~/snap/thunderbird/common/.thunderbird/
+thunderbird --ProfileManager   # select the old profile and set as default
+```
+
+#### .deb
+
+```bash
+# Export (old system)
+cp -r ~/.thunderbird ~/migration/.thunderbird
+```
+
+```bash
+# Restore (new system)
+sudo apt install thunderbird
+# run Thunderbird once, close it, then:
+cp -r ~/migration/.thunderbird/* ~/.thunderbird/
+thunderbird --ProfileManager   # select the old profile and set as default
 ```
 
 ### Verify
 
-Open both browsers and check:
+Open all browsers and Thunderbird and check:
 - Bookmarks and history are present
 - Saved passwords work (try logging into a site)
 - Extensions are installed and functional
