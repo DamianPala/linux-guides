@@ -168,7 +168,7 @@ Settings to configure after a fresh install (System Settings app).
 - KWin → Move Window to Center: `Meta+C`
 - Custom Shortcuts:
   - Restart KDE: `Meta+F9` → `sh ~/scripts/restart_kde.sh`
-  - Clean Copy AI: `Ctrl+Shift+X` → `wl-paste | sed 's/^  //; s/[[:space:]]*$//' | wl-copy`
+  - Clean Copy AI: `Ctrl+Shift+X` → `wl-copy "$(wl-paste | sed 's/^  //; s/[[:space:]]*$//')"`
 
 ### Autostart
 
@@ -183,11 +183,13 @@ Only add if not using KDE session restore:
 - Keyboard → Advanced → Switch layout: `Win+Space`
 - Mouse → (adjust to preference)
 - Touchpad → Tap-to-click, Invert scroll direction (natural)
+- Screen Edges → Screen barier: 0
 
 ### Display and Monitor
 
 - Gamma → 1.00
 - Night Color → Custom times, 2500K, 20:30–5:30, 30 min transition
+- Legacy Applications (X11) → **Scaled by the system** — prevents blurry fonts in XWayland apps
 
 ### Power Management
 
