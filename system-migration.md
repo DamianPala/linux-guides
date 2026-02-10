@@ -48,6 +48,12 @@ Don't restore these wholesale. Browse through both directories manually on the o
 | `kcminputrc` | Mouse/touchpad/keyboard settings — review manually |
 | `konsolerc` + `konsolesshconfig` | Konsole terminal settings |
 | `lazygit` | Lazygit config |
+| `calibre/` | Calibre settings, plugins, customizations, move `~/Calibre Library` as well |
+| `~/.nx/config/` | NoMachine — `player.cfg` (settings) + `hosts.crt` (trusted server certs), copy `~/Documents/NoMachine/*.nxs` for saved connections |
+| `VirtualBox/` | VM registry and settings — fix absolute paths in `VirtualBox.xml` if storage mount points changed, run `sudo /sbin/vboxconfig` to build kernel module |
+| `FreeCAD/` | Preferences, toolbars, shortcuts (only for non-Flatpak installs) |
+| `libreoffice/4/user/` | Entire profile — settings, extensions, macros, custom dictionaries, autocorrect, toolbar customizations. "4" is the profile format version (unchanged since LO 4), works across 7.x → 24.x. Some extensions may need reinstalling |
+| `LibreCAD/` + `LibreCADrc` | Settings, also copy `~/.local/share/LibreCAD/` for custom hatches/fonts |
 
 **Warning:** KDE config files (`kglobalshortcutsrc`, `kcminputrc`, `konsolerc`) can change structure between Plasma major versions (e.g. 5 → 6). Don't blindly copy — open both old and new files side by side and transfer the values you need.
 
@@ -63,11 +69,17 @@ Don't restore these wholesale. Browse through both directories manually on the o
 | `applications/` | Custom `.desktop` files |
 | `Anki2/` | Flashcard decks, study progress, media |
 
+**Worth restoring from `~/.var/app` (Flatpak apps):**
+
+| Path | What |
+|------|------|
+| `org.freecad.FreeCAD/config/FreeCAD/` | Preferences, toolbars, shortcuts — reinstall addons via Addon Manager |
+
 ### Review `~/`
 
 Before you move on, `ls ~/` and check for anything not covered above:
 
-- `~/Documents`
+- `~/Documents` — includes `NoMachine/*.nxs` (saved connections)
 - `~/Downloads`
 - `~/Desktop`
 - `~/dev-tools`
@@ -76,6 +88,7 @@ Before you move on, `ls ~/` and check for anything not covered above:
 - `/opt` - system-wide manual installs
 - `~/keys`, 
 - `~/scripts`
+- `~/Calibre Library` - Calibre book library
 - `licenses` - browse your stored licenses
 
 ---
@@ -145,12 +158,53 @@ sudo systemctl start bluetooth
 # Logitech device config (logiops) — install logiops first
 sudo cp ~/migration/etc/logid.cfg /etc/logid.cfg
 
+# If logid.cfg has custom DPI — add udev rule so the desktop also uses it
+sudo tee /etc/udev/rules.d/99-mx-anywhere-dpi.rules << 'EOF'
+ACTION=="add|change", KERNEL=="event*", ATTRS{name}=="MX Anywhere 3", ENV{MOUSE_DPI}="2000@1000"
+EOF
+# Restart the mouse (toggle power off/on) for udev to apply
+sudo systemctl restart logid
+
 # Custom scripts and hooks — review before copying
 ls ~/migration/usr/local/sbin/
 ls ~/migration/usr/lib/systemd/system-sleep/
 ```
 
 **About Bluetooth:** if the new system has a different Bluetooth adapter MAC, pairing keys won't work — you'll need to re-pair.
+
+---
+
+## KDE Wallet
+
+**Restore KWallet before opening any applications.** Apps like Chrome, Firefox, Remmina, and anything that stores passwords will try to access KWallet on first launch. If the wallet isn't there yet, they'll either prompt for credentials or create new empty wallet entries — overwriting what you want to restore later.
+
+```bash
+# Restore wallet data
+cp -r ~/migration/.local/share/kwalletd/* ~/.local/share/kwalletd/
+
+# Restore wallet config
+cp ~/migration/.config/kwalletrc ~/.config/kwalletrc
+
+# Restart the wallet service to pick up restored data
+kquitapp6 kwalletd6
+```
+
+Open KDE Wallet Manager and verify your wallets are listed. If the wallet uses a password, it will ask you to unlock — use the same password as on the old system.
+
+---
+
+## Snap Application Migration
+
+Snap apps store config in `~/snap/<app>/current/` instead of `~/.config/`. The exact path depends on confinement type:
+
+| App | Config path | What to copy |
+|-----|-------------|--------------|
+| PyCharm | `~/.config/JetBrains/PyCharmCE<ver>/` (classic — standard path) | `keymaps/`, `colors/`, `codestyles/`, `options/`, `pycharm64.vmoptions`. Auto-imports from previous versions on first launch |
+| Obsidian | `~/snap/obsidian/current/.config/obsidian/` | `obsidian.json` only — fix vault paths after copying |
+| Discord | `~/snap/discord/current/.config/discord/` | `settings.json` only — session data is not portable |
+| Zoom | `~/snap/zoom-client/current/.config/zoomus.conf` | `zoomus.conf` — meeting settings, audio/video preferences |
+
+**Note:** PyCharm classic snap uses standard `~/.config/` paths (same as .deb), so migration between .deb and snap is seamless — no path changes needed. PyCharm also auto-imports settings from previous versions on first launch.
 
 ---
 

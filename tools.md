@@ -81,7 +81,7 @@ sudo apt install -y \
   baobab gimp k3b keepassxc meld obs-studio \
   qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build \
-  dislocker fzf htop iftop iotop jq lm-sensors nethogs nload npm p7zip-full p7zip-rar pv \
+  dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
 ```
@@ -95,6 +95,24 @@ cargo install --locked \
   bat bottom du-dust eza fd-find git-delta ripgrep tealdeer uv
 ```
 
+### uv
+
+```bash
+uv python install --default
+python -m pip install --break-system-packages argcomplete  # pure Python, no deps — safe
+sudo "$(dirname "$(readlink -f "$(which python)")")/activate-global-python-argcomplete"
+```
+
+### flatpak
+
+```bash
+sudo apt install -y flatpak
+flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flatpakrepo
+# Restart session after first flatpak install
+
+flatpak install flathub org.freecad.FreeCAD
+```
+
 ### snap
 
 ```bash
@@ -104,6 +122,7 @@ sudo snap install code --classic
 sudo snap install discord
 sudo snap install glow
 sudo snap install pycharm-community --classic
+sudo snap install obsidian --classic
 sudo snap install sublime-text --classic
 sudo snap install telegram-desktop
 sudo snap install zoom-client
@@ -125,12 +144,10 @@ npm install -g ccusage
 | Anki | https://apps.ankiweb.net/ |
 | Calibre | https://calibre-ebook.com/download_linux |
 | Chrome | https://www.google.com/chrome/ |
-| FreeCAD | https://www.freecad.org/downloads.php (AppImage) |
 | KiCad | https://www.kicad.org/download/linux/ |
 | LibreCAD | https://github.com/LibreCAD/LibreCAD/releases |
 | Mullvad VPN | https://mullvad.net/en/download/vpn/linux |
 | NoMachine | https://www.nomachine.com/download |
-| Obsidian | https://obsidian.md/download |
 | Signal | https://signal.org/download/linux/ |
 | Speedtest CLI | https://www.speedtest.net/apps/cli |
 | Synology Drive | https://www.synology.com/en-global/support/download |
