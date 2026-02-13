@@ -126,8 +126,9 @@ Install Borg and borgmatic:
 command -v uv &>/dev/null || { curl -LsSf https://astral.sh/uv/install.sh | sh && source ~/.local/bin/env; }
 
 # Install borg and borgmatic system-wide (to /usr/local/bin)
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin ~/.local/bin/uv tool install borgbackup
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin ~/.local/bin/uv tool install borgmatic
+UV=$(which uv)
+sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool install borgbackup
+sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool install borgmatic
 ```
 
 Verify versions (Borg 1.4.3+, borgmatic 2.1.x+ required):
@@ -139,8 +140,9 @@ borgmatic --version
 
 **Upgrading later:**
 ```bash
-sudo UV_TOOL_BIN_DIR=/usr/local/bin uv tool upgrade borgbackup
-sudo UV_TOOL_BIN_DIR=/usr/local/bin uv tool upgrade borgmatic
+UV=$(which uv)
+sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool upgrade borgbackup
+sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool upgrade borgmatic
 ```
 
 ## Step 3: NAS Preparation (Synology)
@@ -237,13 +239,20 @@ This ensures the backup user can ONLY connect via SSH with the forced-command - 
 
 ### Create Repository Directory
 
-SSH to NAS as admin and create the laptop-specific directory:
+SSH to NAS as admin and create the laptop-specific directory. First, print the variables to copy-paste into the NAS session:
+
+```bash
+echo "REPO_PATH=\"$REPO_PATH\""
+```
+
+Copy the output, then SSH to NAS and paste it:
 
 ```bash
 ssh admin@nas_ip
-sudo mkdir -p /volume1/backup/laptop
-sudo chown backup:users /volume1/backup/laptop
-sudo chmod 700 /volume1/backup/laptop
+REPO_PATH="/volume1/backup/laptop"   # paste the output from above
+sudo mkdir -p "$REPO_PATH"
+sudo chown backup:users "$REPO_PATH"
+sudo chmod 700 "$REPO_PATH"
 ```
 
 ## Step 4: SSH Key Setup with Forced Command
@@ -327,21 +336,24 @@ This should be blocked—proving the forced-command prevents arbitrary command e
 
 ## Step 5: Initialize Borg Repository
 
-Initialize the encrypted Borg repository on the NAS:
+From your laptop, initialize the encrypted Borg repository on the NAS. You'll be prompted for a passphrase — choose a **strong one** (25+ characters, random, stored in password manager). This passphrase protects all your backups; without it, data is unrecoverable.
 
 ```bash
 export BORG_RSH="ssh -i ~/.ssh/backup_append_only"
+read -rsp "Borg passphrase: " BORG_PASSPHRASE && export BORG_PASSPHRASE && echo
 borg init --encryption=repokey-blake2 ssh://${NAS}${REPO_PATH}
+
+# Verify
+borg info ssh://${NAS}${REPO_PATH}
 ```
 
-After initialization, verify the backup user owns all repo files on the NAS:
+You should see `Encrypted: Yes (repokey BLAKE2b)` and `Repository ID` in the output.
+
+If you get `Permission denied` on subsequent operations, fix ownership on the NAS:
 
 ```bash
-ssh admin@nas_ip
-sudo chown -R backup:users ${REPO_PATH}
+ssh admin@${NAS#*@} "sudo chown -R backup:users ${REPO_PATH}"
 ```
-
-Without this, the backup user may get `Permission denied` when accessing the repository.
 
 **Repository per device (recommended):**
 Keep one Borg repository per device. If you ever store multiple devices in a single repo, you must scope pruning/maintenance with `--glob-archives` (or similar) so archives from different machines don't prune each other.
@@ -349,7 +361,6 @@ Keep one Borg repository per device. If you ever store multiple devices in a sin
 **About encryption modes:**
 - `repokey-blake2`: Encryption key stored in repo, encrypted with passphrase
 - Uses BLAKE2b hashing (faster than SHA256 on most modern CPUs)
-- Choose a **strong passphrase** (25+ characters, random, stored in password manager)
 
 ## Step 6: Healthchecks.io Setup
 
