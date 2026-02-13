@@ -540,6 +540,7 @@ healthchecks:
         - finish
         - fail
 
+one_file_system: true
 compression: zstd
 statistics: true
 ssh_command: ssh -i /home/$USER/.ssh/backup_append_only
@@ -572,6 +573,19 @@ The credential is now encrypted. The systemd service will decrypt it at runtime 
 **Important:** Store your passphrase in a password manager as backup. Without it and the repo key, backups are permanently unrecoverable.
 
 ## Step 9: Test Backup
+
+### Dry Run — Verify File Selection
+
+Before running the actual backup, check which files borgmatic will include:
+
+```bash
+read -rsp "Borg passphrase: " BORG_PASSPHRASE && echo
+sudo BORG_PASSPHRASE="$BORG_PASSPHRASE" borgmatic create --dry-run --list --verbosity 1 2>&1 | tee /tmp/borgmatic-dry-run.log
+```
+
+Review the log — look for files that shouldn't be there (mounted volumes, large caches, build artifacts).
+
+### Run Actual Backup
 
 Run a manual backup to verify everything works. For manual testing, you need to provide the passphrase (systemd credentials only work when running as a service):
 
