@@ -630,7 +630,56 @@ reboot
 
 ---
 
-## Step 8: Remove temp partition + expand LUKS
+## Step 8: Backup LUKS headers (critical)
+
+LUKS header stores keyslots and encryption metadata. If this header gets corrupted, data may be unrecoverable even if you still know the passphrase. Do this right after TPM enrollment and repeat after any key-management change (`luksAddKey`, `luksKillSlot`, `systemd-cryptenroll --wipe-slot`, etc.).
+
+**1. Set output directory (path only):**
+
+```bash
+export OUT_DIR="$HOME/luks-header-backups-$(date +%Y%m%d-%H%M%S)"
+echo "$OUT_DIR"
+```
+
+**2. Run backup script (auto-detects all LUKS devices):**
+
+```bash
+bash <<'EOF'
+set -euo pipefail
+
+: "${OUT_DIR:?Set OUT_DIR first. Example: export OUT_DIR=\"\$HOME/luks-header-backups-\$(date +%Y%m%d-%H%M%S)\"}"
+mkdir -p "$OUT_DIR"
+
+mapfile -t LUKS_DEVS < <(lsblk -rpo NAME,FSTYPE | awk '$2=="crypto_LUKS" {print $1}')
+if [ "${#LUKS_DEVS[@]}" -eq 0 ]; then
+  echo "No LUKS devices detected (FSTYPE=crypto_LUKS)."
+  exit 1
+fi
+
+echo "Detected LUKS devices:"
+printf ' - %s\n' "${LUKS_DEVS[@]}"
+
+for dev in "${LUKS_DEVS[@]}"; do
+  name=$(basename "$dev" | sed 's/[^A-Za-z0-9._-]/_/g')
+  sudo cryptsetup luksHeaderBackup "$dev" --header-backup-file "$OUT_DIR/luks-header-$name.bin"
+  sudo cryptsetup luksDump "$dev" > "$OUT_DIR/luks-$name.txt"
+done
+
+# Header files are typically root-owned (created by sudo cryptsetup),
+# so compute checksums as root and save SHA256SUMS as root too.
+sudo sha256sum "$OUT_DIR"/luks-header-*.bin | sudo tee "$OUT_DIR/SHA256SUMS" > /dev/null
+echo "LUKS header backup complete: $OUT_DIR"
+sudo ls -lh "$OUT_DIR"
+EOF
+```
+
+Store these files in at least two places outside the encrypted system disk (for example: encrypted USB + secure cloud vault).
+
+If you also use [`system-backup-disaster-recovery.md`](./system-backup-disaster-recovery.md), its script already runs `cryptsetup luksHeaderBackup` for all detected LUKS devices.
+
+---
+
+## Step 9: Remove temp partition + expand LUKS
 
 Boot into Live ISO (VirtualBox: see `systemctl reboot --firmware-setup` tip in Step 4):
 
