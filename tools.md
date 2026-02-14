@@ -80,7 +80,8 @@ sudo apt update
 sudo apt install -y \
   baobab gimp k3b keepassxc meld obs-studio \
   qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
-  build-essential clang clang-format clang-tidy cmake git gh ninja-build \
+  build-essential clang clang-format clang-tidy cmake git gh ninja-build pkg-config \
+  libacl1-dev liblz4-dev libxxhash-dev libzstd-dev python3-dev \
   dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
@@ -101,6 +102,7 @@ cargo install --locked \
 uv python install --default
 python -m pip install --break-system-packages argcomplete  # pure Python, no deps — safe
 sudo "$(dirname "$(readlink -f "$(which python)")")/activate-global-python-argcomplete"
+uv tool install hatch
 ```
 
 ### flatpak

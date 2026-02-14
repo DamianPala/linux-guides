@@ -12,3 +12,4 @@ Setup notes and configurations for Linux, Ubuntu, KDE and general how-tos.
 - [eza](eza.md)
 - [lazygit](tools.md#lazygit)
 - [bat](tools.md#bat)
+- [Workarounds](workarounds.md) — Fixes for Wayland/KDE bugs and other quirks

@@ -137,78 +137,96 @@ udevadm monitor --property --subsystem-match=power_supply
 
 ## KDE Plasma Settings
 
-Settings to configure after a fresh install (System Settings app).
+Settings to configure after a fresh install. Paths follow Plasma 6 System Settings.
 
-### Appearance
+### Appearance & Style
 
-- Global Theme → Breeze Dark
-- Plasma Style → Breeze Dark
-- Colors → (match theme)
+- Colors & Themes → Global Theme → **Breeze Dark**
+- Colors & Themes → Colors → **Sweet Custom New**
+- Animations → Animation speed: **slightly faster** (`AnimationDurationFactor=0.70`)
 
-### Workspace Behavior
+### Apps & Windows
 
-- Desktop Effects → Virtual Desktop Switching Animation → Slide
-- Desktop Effects → Window Management → Desktop Grid
+- Default Applications → Web browser: **Google Chrome**
+- Window Management → Virtual Desktops → **4 desktops in 2×2 grid**: Main, Investments / Work, Learn
+- Window Management → Virtual Desktops →  Switching Animation: **Slide**
+- Window Management → Task Switcher → Visualization: **Thumbnail Grid**
+- Window Management → Desktop Effects → enable **Remember Window Positions** (KWin Script)
+- Window Management → Window Rules:
+  - Obsidian — icon fix (snap tray icon mismatch)
+  - Signal — icon fix (snap tray icon mismatch)
+
+### Security & Privacy
+
+- Screen Locking → Lock screen automatically: **15 min**
+- Screen Locking → Delay before password required: **10 seconds**
+
+### Input & Output
+
+**Keyboard:**
+
+- Keyboard → Layouts: **Polish**, **Montenegrin** (Latin variant)
+- Keyboard → Switching to another layout: **Meta+Space**
+- Keyboard → Shortcuts:
+  - Power Management → Sleep: `Meta+S`
+  - KWin → Move Window to Center: `Meta+C`
+  - Shortcuts → Add New → Command (name → command → shortcut):
+    - **Clean Copy AI** → `wl-copy "$(wl-paste | sed 's/^  //; s/[[:space:]]*$//')"` → `Ctrl+Shift+X`
+    - **Restart Plasmashell** → `systemctl --user restart plasma-plasmashell.service` → `Meta+F9`
+    - **Restart KDE** → `systemctl --user restart plasma-kwin_wayland.service plasma-plasmashell.service plasma-powerdevil.service` → `Meta+F10`
+
+**Mouse & Touchpad:**
+
+- Mouse → Pointer acceleration: **Enabled**
+- Touchpad → Invert scroll direction: **Natural scrolling**
 - Screen Edges:
-  - Top Left → Desktop Grid
   - Top → Toggle Overview
+  - Top-Left → Toggle Grid View
   - Activation delay: 100 ms
   - Reactivation delay: 250 ms
-- Screen Locking → Lock automatically after 10 min
-- Screen Locking → Allow unlocking without password for 10 s
-- Virtual Desktops → Row 1: Main, Investments · Row 2: Work, Learn
+  - Edge barrier: **0** (disabled)
 
-### Window Management
+**Display & Monitor:**
 
-- Task Switcher → Visualization: Thumbnail Grid
+- Display Configuration:
 
-### Shortcuts
+  | Display | Resolution | Scale | Refresh |
+  |---|---|---|---|
+  | ASUS laptop (eDP-1) | 2880×1800 | 150% | 90 Hz |
+  | LG external (DP-6) | 2560×1440 | 100% | 165 Hz |
 
-- Power Management → Sleep: `Meta+S`
-- KWin → Move Window to Center: `Meta+C`
-- Custom Shortcuts:
-  - Restart KDE: `Meta+F9` → `sh ~/scripts/restart_kde.sh`
-  - Clean Copy AI: `Ctrl+Shift+X` → `wl-copy "$(wl-paste | sed 's/^  //; s/[[:space:]]*$//')"`
+  Layout when docked: external monitor (primary) left, laptop right.
 
-### Autostart
+- Night Light → Custom times, **2500K**, 20:30–05:30, 30 min transition
 
-Only add if not using KDE session restore:
+### System
 
-- Discord, Signal, Telegram Desktop
-- SmartGit, Synology, Flameshot
+**Power Management:**
 
-### Input Devices
+| Setting | AC | Battery |
+|---|---|---|
+| Dim screen | 15 min | 10 min |
+| Turn off screen | off | 15 min |
+| Suspend session | off | 90 min |
 
-- Keyboard → Layouts: Montenegrin variant Latin
-- Keyboard → Advanced → Switch layout: `Win+Space`
-- Mouse → (adjust to preference)
-- Touchpad → Tap-to-click, Invert scroll direction (natural)
-- Screen Edges → Screen barier: 0
+**Startup:**
 
-### Display and Monitor
+- Session → Desktop Session → **Start with an empty session** (no session restore)
+- Autostart: Discord, Dolphin, Kate, Mullvad VPN, Remmina, Signal, Synology Drive, Telegram, Thunderbird
 
-- Gamma → 1.00
-- Night Color → Custom times, 2500K, 20:30–5:30, 30 min transition
-- Legacy Applications (X11) → **Scaled by the system** — prevents blurry fonts in XWayland apps
+---
 
-### Power Management
+## Rescue Account (admin)
 
-Energy Saving:
+A separate admin account for emergencies — accidentally removing yourself from `sudo`, breaking `.bashrc`/`.profile`, or needing to fix permissions from another session.
 
-**On AC:**
-- Dim screen: 15 min
-- Screen energy saving: off
-- Suspend session: off
+System → Users → **Add New User**:
 
-**On Battery:**
-- Dim screen: 10 min
-- Screen energy saving: 15 min
-- Suspend session: 120 min
+- Name: `rescue`
+- Account type: **Administrator**
+- Password: same as main account (easier to remember in emergencies)
 
-### Other
-
-- Default Applications → Web browser: Google Chrome
-- Users → create `tester` account
+After creating, test via TTY: Ctrl+Alt+F2 → log in as `rescue` → `sudo whoami` → should return `root`.
 
 ---
 
