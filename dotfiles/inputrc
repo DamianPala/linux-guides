@@ -1,0 +1,21 @@
+# ~/.inputrc — Readline configuration
+
+# --- Completion behavior ---
+set completion-ignore-case on
+set completion-map-case on
+set show-all-if-ambiguous on
+set colored-stats on
+
+# --- Tab completion cycling ---
+TAB: menu-complete
+"\e[Z": menu-complete-backward
+
+# --- History search ---
+# Ctrl+Up/Down: search by prefix typed so far
+"\e[1;5A": history-search-backward
+"\e[1;5B": history-search-forward
+
+# --- Arrow keys ---
+# Right/Left: move by character (fix for some terminals)
+"\e[C": forward-char
+"\e[D": backward-char
