@@ -30,9 +30,8 @@ sudo apt install -y git curl build-essential ripgrep fd-find fzf
 Install the official AppImage and place it system-wide. This keeps updates simple and avoids distro lag:
 
 ```bash
-curl -LO https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.appimage
-chmod u+x nvim-linux-x86_64.appimage
-sudo mv nvim-linux-x86_64.appimage /usr/local/bin/nvim
+curl -L https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz | sudo tar xz -C /opt 
+sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
 ```
 
 Verify installation:

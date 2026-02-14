@@ -82,7 +82,7 @@ sudo apt install -y \
   qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build pkg-config \
   libacl1-dev liblz4-dev libxxhash-dev libzstd-dev python3-dev \
-  dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
+  gdisk dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
 ```

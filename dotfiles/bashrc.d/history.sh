@@ -23,14 +23,7 @@ shopt -s histappend
 shopt -s histverify
 
 # Flush each command to history file immediately (survive crashes)
-# Wrap history -a to preserve $? for Starship exit-code detection
+# Called by zzz-starship.sh precmd hook (after $? is captured)
 __history_flush() {
-  local ret=$?
   history -a
-  return $ret
 }
-
-if [[ -z "${_history_loaded-}" ]]; then
-  _history_loaded=1
-  PROMPT_COMMAND="__history_flush${PROMPT_COMMAND:+;$PROMPT_COMMAND}"
-fi
