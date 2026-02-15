@@ -93,6 +93,7 @@ Hook execution order (after each command):
 | `lM` | `ls -l --sort=modified` |
 | `cat` | `bat -pp` (plain, no pager) |
 | `vi` | `nvim` |
+| `ssh` | `TERM=xterm-256color ssh` (fix for modern terminals) |
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
 

@@ -63,6 +63,26 @@ source ~/.bashrc
 
 ---
 
+## zvm + Zig
+
+[ZVM](https://github.com/tristanisham/zvm) (Zig Version Manager) — install and switch between Zig versions. Single static binary, only dependency is `tar`.
+
+### Install
+
+```bash
+curl https://www.zvm.app/install.sh | bash
+source ~/.bashrc
+```
+
+### Usage
+
+```bash
+zvm install master       # latest dev build
+zvm install 0.14.0       # specific release
+```
+
+---
+
 ## Misc Apps
 
 ### apt

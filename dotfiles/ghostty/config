@@ -1,0 +1,74 @@
+# Font
+# Repeated entries form a fallback chain (first match is primary, rest fill missing glyphs).
+# List installed fonts: ghostty +list-fonts
+font-family = "Hack Nerd Font Mono"
+font-family = "Hack"
+font-family = "Noto Sans Mono"
+font-size = 10
+adjust-cell-height = -5%
+adjust-cell-width = 0%
+
+# Theme
+# List built-in themes: ghostty +list-themes
+# Custom themes go in ~/.config/ghostty/themes/
+theme = "Monokai Pro Dusk"
+
+# Look & feel
+background-opacity = 0.9
+background-blur = true
+window-padding-x = 4
+window-padding-y = 4
+cursor-style = block
+cursor-style-blink = true
+bold-color = #97eefa
+
+# Scrollback (128 MiB, in bytes)
+scrollback-limit = 134217728
+mouse-scroll-multiplier = 1
+
+# Clipboard
+copy-on-select = clipboard
+clipboard-trim-trailing-spaces = true
+clipboard-paste-protection = true
+clipboard-paste-bracketed-safe = true
+
+# Tabs & window
+window-show-tab-bar = always
+window-decoration = none
+gtk-tabs-location = top
+gtk-titlebar-style = tabs
+gtk-toolbar-style = raised-border
+gtk-wide-tabs = false
+
+# Shell integration
+shell-integration = detect
+shell-integration-features = cursor,title,path,ssh-env
+
+# Keybindings — splits
+keybind = ctrl+shift+l=new_split:right
+keybind = ctrl+shift+o=new_split:down
+keybind = ctrl+shift+left=goto_split:left
+keybind = ctrl+shift+down=goto_split:down
+keybind = ctrl+shift+up=goto_split:up
+keybind = ctrl+shift+right=goto_split:right
+keybind = ctrl+shift+enter=toggle_split_zoom
+keybind = ctrl+shift+e=equalize_splits
+keybind = ctrl+shift+alt+up=resize_split:up,10
+keybind = ctrl+shift+alt+down=resize_split:down,10
+keybind = ctrl+shift+alt+left=resize_split:left,10
+keybind = ctrl+shift+alt+right=resize_split:right,10
+
+# Keybindings — scrollback
+keybind = ctrl+home=scroll_to_top
+keybind = ctrl+end=scroll_to_bottom
+
+# Keybindings — prompt jumping (requires shell integration)
+keybind = alt+up=jump_to_prompt:-1
+keybind = alt+down=jump_to_prompt:1
+
+# Keybindings — word deletion
+keybind = ctrl+backspace=text:\x1b\x7f   # sends Ctrl+W (delete previous word in readline)
+keybind = ctrl+delete=esc:d              # sends Esc+d (delete next word in readline)
+
+# Notifications
+app-notifications = no-clipboard-copy
