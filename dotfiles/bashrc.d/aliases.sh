@@ -1,4 +1,4 @@
-# Aliases and tool overrides (eza, bat, nvim, grep, gcc)
+# Aliases and tool overrides
 
 # eza (ls replacement)
 if command -v eza &>/dev/null; then

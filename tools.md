@@ -114,6 +114,7 @@ curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 cargo install --locked \
   bat bottom du-dust eza fd-find git-delta ripgrep tealdeer uv
+sudo ln -s ~/.cargo/bin/{eza,bat,fd,rg} /usr/local/bin/
 ```
 
 ### uv
