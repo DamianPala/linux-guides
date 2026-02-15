@@ -34,7 +34,7 @@ clipboard-paste-bracketed-safe = true
 
 # Tabs & window
 window-show-tab-bar = always
-window-decoration = none
+window-decoration = client
 gtk-tabs-location = top
 gtk-titlebar-style = tabs
 gtk-toolbar-style = raised-border

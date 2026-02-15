@@ -531,6 +531,7 @@ commands:
     - before: action
       when: [create]
       run:
+          - borg break-lock {repository}
           - /usr/local/bin/backup-dr-metadata.sh
 
 healthchecks:
@@ -628,7 +629,7 @@ WantedBy=timers.target
 EOF
 
 # Create service
-sudo tee /etc/systemd/system/borgmatic.service > /dev/null << 'EOF'
+sudo tee /etc/systemd/system/borgmatic.service > /dev/null << EOF
 [Unit]
 Description=borgmatic backup
 After=network-online.target
@@ -639,8 +640,11 @@ Type=oneshot
 # Load encrypted passphrase credential
 LoadCredentialEncrypted=borg-passphrase:/etc/credstore.encrypted/borg-passphrase
 
+# SSH key for borg (needed by hook commands that call borg directly)
+Environment="BORG_RSH=ssh -i /home/$USER/.ssh/backup_append_only"
+
 # Pass passphrase to borgmatic via environment variable
-ExecStart=/bin/bash -c 'BORG_PASSPHRASE=$(cat ${CREDENTIALS_DIRECTORY}/borg-passphrase) /usr/local/bin/borgmatic --verbosity 1'
+ExecStart=/bin/bash -c 'BORG_PASSPHRASE=$(cat \${CREDENTIALS_DIRECTORY}/borg-passphrase) /usr/local/bin/borgmatic --verbosity 1'
 
 # Security settings (based on official borgmatic sample)
 LockPersonality=true
