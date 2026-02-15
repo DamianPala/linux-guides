@@ -1,6 +1,6 @@
 # Modular Bashrc Setup
 
-Organized bash configuration split into a clean base `~/.bashrc` and modular `~/.bashrc.d/*.sh` scripts. Each module handles one concern — aliases, history, navigation, etc. — and can be enabled/disabled by adding or removing the file.
+Bash configuration split into a clean base `~/.bashrc` and modular `~/.bashrc.d/*.sh` scripts. Each module handles one concern — aliases, history, navigation, etc.
 
 ---
 
@@ -10,7 +10,7 @@ Organized bash configuration split into a clean base `~/.bashrc` and modular `~/
 ~/.bashrc              ← base: prompt with git, PATH, completion, module loader
 ~/.bashrc.d/
   aliases.sh           ← eza, bat, nvim, grep
-  claude.sh            ← Claude Code shortcuts
+  ai.sh                ← Claude Code + Codex shortcuts
   completions.sh       ← tab-completion for bat, fd, rg, fzf
   history.sh           ← large crash-safe history
   navigation.sh        ← cdspell, globstar, CDPATH
@@ -26,9 +26,9 @@ The base bashrc loads all `~/.bashrc.d/*.sh` files in alphabetical order at the 
 
 ## Install
 
-From the repo root (`linux-guides/`):
-
 ```bash
+git clone git@github.com:DamianPala/linux-guides.git
+cd linux-guides
 cp dotfiles/bashrc ~/.bashrc
 mkdir -p ~/.bashrc.d
 cp dotfiles/bashrc.d/*.sh ~/.bashrc.d/
@@ -37,17 +37,14 @@ chmod 700 ~/.bashrc.d
 chmod 600 ~/.bashrc.d/*.sh
 ```
 
-Then reload:
+The base bashrc works standalone — modules are safe to load even if their tools aren't installed.
+
+Reload and verify:
 
 ```bash
 source ~/.bashrc
+type refresh    # should show: refresh is aliased to `source ~/.bashrc'
 ```
-
----
-
-## Dependencies
-
-The base bashrc works standalone. All modules are safe to load even if their tools aren't installed.
 
 ---
 
@@ -79,8 +76,6 @@ Hook execution order (after each command):
    - `__zellij_tab_name_update` — rename Zellij tab to current dir
 3. **Starship** renders the prompt
 
-Because Starship captures `$?` *before* calling the user hook, the hook functions don't need `$?` preservation workarounds. If Starship is not installed, a fallback wrapper preserves `$?` and wires the hooks via `PROMPT_COMMAND`.
-
 ---
 
 ## Modules
@@ -101,7 +96,9 @@ Because Starship captures `$?` *before* calling the user hook, the hook function
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
 
-### claude.sh
+### ai.sh
+
+**Claude Code** (`cl` prefix):
 
 | Function / Alias | What |
 |-------------------|------|
@@ -110,6 +107,15 @@ Because Starship captures `$?` *before* calling the user hook, the hook function
 | `claude-deep` / `cld` | Opus model with max thinking tokens |
 | `claude-temp` / `clt` | New session in temp sandbox dir |
 | `claude-quick` / `clq` | Sonnet model in temp sandbox dir |
+
+**Codex** (`cx` prefix):
+
+| Function / Alias | What |
+|-------------------|------|
+| `codex-temp` / `cxt` | Sandboxed session (temp profile) |
+| `codex-quick` / `cxq` | Sandboxed session (quick profile) |
+
+Codex functions run in a subshell with isolated `CODEX_HOME` and symlinked auth/config.
 
 ### completions.sh
 
