@@ -52,7 +52,7 @@ type refresh    # should show: refresh is aliased to `source ~/.bashrc'
 
 When Starship is installed (the default), it manages the prompt entirely via `zzz-starship.sh`. The section below describes the **fallback** prompt used when Starship is not available.
 
-The fallback uses `__git_ps1` via `PROMPT_COMMAND` (not a static PS1) for color-coded git status:
+The fallback uses `__git_ps1` via `PROMPT_COMMAND` (not a static PS1) with root = red, non-root = cyan username, and color-coded git status:
 
 - **Green** branch name = clean working directory
 - **Red** branch name = uncommitted changes
@@ -93,7 +93,11 @@ Hook execution order (after each command):
 | `lM` | `ls -l --sort=modified` |
 | `cat` | `bat -pp` (plain, no pager) |
 | `vi` | `nvim` |
-| `ssh` | `TERM=xterm-256color ssh` (fix for modern terminals) |
+| `fd` | `fdfind` |
+| `df` | `df -h` |
+| `free` | `free -h` |
+| `ssh` | `TERM=xterm-256color ssh` + reset kitty keyboard protocol on exit |
+| `sudo` | `sudo ` (trailing space triggers alias expansion on next word) |
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
 
@@ -132,7 +136,7 @@ Tools that already have system or user completions (delta, zellij) are skipped.
 - `HISTSIZE=500000` — half a million entries in memory
 - `HISTFILESIZE=500000` — matches HISTSIZE (no truncation across sessions)
 - `erasedups:ignorespace` — removes all previous copies of a command, ignores space-prefixed lines
-- `HISTIGNORE` — skips trivial commands (`ls`, `cd`, `pwd`, etc.)
+- `HISTIGNORE` — skips trivial commands (`cd`, `pwd`, `exit`, `clear`, `history`, `bg`, `fg`)
 - `HISTTIMEFORMAT='%F %T  '` — timestamps in `history` output
 - `histverify` — recalled commands go to the prompt for editing, not immediate execution
 - `history -a` via precmd hook — flush after every command (no lost history on crash)
@@ -142,6 +146,7 @@ Tools that already have system or user completions (delta, zellij) are skipped.
 - `cdspell` — auto-correct minor typos in `cd` arguments
 - `dirspell` — auto-correct typos during tab completion
 - `globstar` — `**` matches recursively (e.g. `**/*.py`)
+- `..` / `...` — quick `cd ..` and `cd ../..`
 - `CDPATH` — `cd projects` works from anywhere if `~/Documents/ai_sandbox/projects` exists
 
 ### rsyncssh.sh
@@ -172,6 +177,36 @@ Readline configuration (`~/.inputrc`):
 - Hyphens and underscores treated as equivalent (`completion-map-case`)
 - Single Tab shows all matches immediately (`show-all-if-ambiguous`)
 - Tab cycles through matches (`menu-complete`), Shift+Tab cycles backward
+- Common prefix completed first before cycling (`menu-complete-display-prefix`)
 - Completions color-coded by file type (`colored-stats`)
 - **Ctrl+Up** / **Ctrl+Down** — search history by prefix (type `git` then Ctrl+Up cycles through git commands)
 - Arrow key fixes for some terminals
+
+---
+
+## Server variant
+
+**`dotfiles/bashrc-server`** — single-file bashrc for servers and VPS machines. No external dependencies. Same quality-of-life features as the modular desktop setup, packed into one file:
+
+- Same history settings (500k, erasedups, timestamps, crash-safe flush)
+- Color prompt with git branch (root = red, non-root = cyan)
+- Readline config embedded via `bind` (no separate inputrc)
+- Aliases: ls/ll/la with colors, grep, df -h, free -h, ../..., vi→nvim/vim
+- SSH wrapper with kitty keyboard protocol reset (prevents terminal garbage after broken connections)
+- rsyncssh function with completion
+- Completions for fd, rg, fzf if installed, guarded
+
+### Quick install (on the server)
+
+```bash
+# Tools
+sudo apt update && sudo apt install -y git fd-find ripgrep fzf rsync
+curl -L https://github.com/neovim/neovim/releases/latest/download/nvim-linux-x86_64.tar.gz | sudo tar xz -C /opt
+sudo ln -sf /opt/nvim-linux-x86_64/bin/nvim /usr/local/bin/nvim
+
+# Bashrc
+cp ~/.bashrc ~/.bashrc.bak 2>/dev/null
+wget -qO ~/.bashrc https://raw.githubusercontent.com/DamianPala/linux-guides/main/dotfiles/bashrc-server
+sudo cp ~/.bashrc /root/.bashrc
+source ~/.bashrc
+```
