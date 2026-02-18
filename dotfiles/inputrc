@@ -5,6 +5,7 @@ set completion-ignore-case on
 set completion-map-case on
 set show-all-if-ambiguous on
 set colored-stats on
+set menu-complete-display-prefix on
 
 # --- Tab completion cycling ---
 TAB: menu-complete
