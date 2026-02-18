@@ -30,6 +30,15 @@ if command -v nvim &>/dev/null; then
   alias vi='nvim'
 fi
 
+# fd: Ubuntu package fd-find ships binary as 'fdfind'
+if ! command -v fd &>/dev/null && command -v fdfind &>/dev/null; then
+  alias fd='fdfind'
+fi
+
+# human-readable output
+alias df='df -h'
+alias free='free -h'
+
 # grep colors
 alias grep='grep --color=auto'
 alias fgrep='grep -F --color=auto'
@@ -41,9 +50,14 @@ export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quo
 # Desktop notification for long-running commands: sleep 10; alert
 alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo error)" "$(history|tail -n1|sed -e '\''s/^\s*[0-9]\+\s*//;s/[;&|]\s*alert$//'\'')"'
 
-# Fix TERM for SSH (remote hosts lack ghostty terminfo)
-function ssh { TERM=xterm-256color command ssh "$@"; }
+# Fix TERM for SSH + reset kitty keyboard protocol after exit
+# Remote hosts lack ghostty terminfo → force xterm-256color
+# nvim enables kitty keyboard protocol; reset it so broken SSH doesn't leave garbage
+function ssh { TERM=xterm-256color command ssh "$@"; printf '\x1b[<u'; }
 export -f ssh
+
+# Expand aliases after sudo (trailing space triggers alias expansion on next word)
+alias sudo='sudo '
 
 # Reload bashrc
 alias refresh='source ~/.bashrc'

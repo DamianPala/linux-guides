@@ -8,7 +8,7 @@ HISTSIZE=500000
 HISTFILESIZE=500000
 
 # Skip trivial commands from history
-HISTIGNORE='ls:ll:la:l:cd:pwd:exit:clear:history:bg:fg'
+HISTIGNORE='cd:pwd:exit:clear:history:bg:fg'
 
 # Timestamp each history entry
 HISTTIMEFORMAT='%F %T  '

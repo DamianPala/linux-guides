@@ -13,7 +13,7 @@ rsyncssh() {
     case "$1" in
     --port | --ssh-port)
       port="$2"
-      if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+      if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
         echo "rsyncssh: invalid port: $port" >&2
         return 1
       fi
@@ -21,7 +21,7 @@ rsyncssh() {
       ;;
     :[0-9]*)
       port="${1#:}"
-      if ! [[ "$port" =~ ^[0-9]+$ ]]; then
+      if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
         echo "rsyncssh: invalid port: $port" >&2
         return 1
       fi
