@@ -199,6 +199,7 @@ Readline configuration (`~/.inputrc`):
 - Color prompt with git branch (root = red, non-root = cyan)
 - Readline config embedded via `bind` (no separate inputrc)
 - Aliases: ls/ll/la with colors, grep, df -h, free -h, ../..., vi→nvim/vim
+- Ghostty support: `xterm-ghostty` in color detection, `COLORTERM=truecolor` when connecting from Ghostty
 - SSH wrapper with kitty keyboard protocol reset (prevents terminal garbage after broken connections)
 - rsyncssh function with completion
 - Completions for fd, rg, fzf if installed, guarded
