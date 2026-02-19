@@ -124,6 +124,7 @@ fi
 # Incremental PATH additions
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
+[[ -d "$HOME/.zvm" ]] && PATH="$HOME/.zvm/bin:$HOME/.zvm/self:$PATH"
 
 # ---------------------------------------------------------------------------
 # Aliases
@@ -145,3 +146,7 @@ if [[ -d "$HOME/.bashrc.d" ]]; then
     done
     unset f
 fi
+
+# ---------------------------------------------------------------------------
+# Auto-added by installers below this line
+# ---------------------------------------------------------------------------
