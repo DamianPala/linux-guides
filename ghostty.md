@@ -46,13 +46,21 @@ Binary lands in `zig-out/bin/ghostty`. Install it:
 sudo install -m 0755 zig-out/bin/ghostty /usr/bin/
 ```
 
+If replacing an existing build, back up first:
+
+```bash
+sudo cp /usr/bin/ghostty "/usr/bin/ghostty-$(date +%Y%m%d)"
+```
+
 To update later — pull the latest tag and rebuild:
 
 ```bash
 cd ~/src/ghostty
 git pull --tags --force
 git checkout "$(git describe --tags --abbrev=0)"
+rm -rf zig-out .zig-cache
 zig build -Doptimize=ReleaseFast
+sudo cp /usr/bin/ghostty "/usr/bin/ghostty-$(date +%Y%m%d)"         # backup for rollback
 sudo install -m 0755 zig-out/bin/ghostty /usr/bin/
 ```
 
