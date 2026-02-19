@@ -14,11 +14,11 @@ nvme0n1 / nvme1n1
 ├─ p2  → md1  (RAID1)  →  /       ext4   48 GB
 ├─ p3  → md2  (RAID1)  →  swap           16 GB
 ├─ p4  → extended partition container (created by installimage)
-└─ p5  → ZFS mirror    →  "storage"    ~889 GB
+└─ p5  → ZFS mirror    →  "storage"    remaining space
 ```
 
 - Root on mdadm RAID1 — `installimage` handles this natively
-- VM storage on ZFS mirror — snapshots, compression, thin provisioning
+- VM storage on ZFS mirror — snapshots, compression, flexible provisioning
 - Proxmox VE with web GUI on port 8006
 
 **Why ZFS for VM storage?** ZFS snapshots are nearly free — they use copy-on-write and don't degrade I/O performance. This matters when you run snapshot-based backups on all VMs (e.g., via Proxmox Backup Server). The alternative, LVM-thin, has cheaper initial setup but its snapshots cause measurable performance degradation under write-heavy workloads.
@@ -98,6 +98,7 @@ The wiki walks you through: adding the GPG key and repository, installing the Pr
 - After installing the Proxmox kernel and rebooting, **remove the stock Debian kernel** as the wiki instructs
 - **Remove `os-prober`** — unnecessary on a headless server and can interfere with GRUB
 - If you see **perl locale warnings** after install, run `dpkg-reconfigure locales` and generate the locales you need (e.g., `en_US.UTF-8`). Common on Hetzner where the base image ships with minimal locale config
+
 ### Verification
 
 ```bash
@@ -114,11 +115,23 @@ PVE adds an enterprise repo by default. Without a subscription key, `apt update`
 sed -i '/^[^#]/ s/^/# /' /etc/apt/sources.list.d/pve-enterprise.sources
 ```
 
-Verify:
+**About the filename:** PVE 9+ uses the deb822 `.sources` format. If you're on an older PVE, the file may be named `pve-enterprise.list` instead — check with `ls /etc/apt/sources.list.d/pve-*`.
+
+### Verification
+
+Confirm the enterprise repo is commented out and the no-subscription repo (added during the wiki install) is active:
+
+```bash
+grep -r '^[^#]' /etc/apt/sources.list.d/pve-*.sources
+```
+
+You should see only `pve-no-subscription` lines — no uncommented `pve-enterprise` entries. Then:
 
 ```bash
 apt update
 ```
+
+This should complete without errors or 401 warnings.
 
 ## Step 5 — Set up ZFS VM storage
 
@@ -208,6 +221,12 @@ echo "options zfs zfs_arc_max=3221225472" > /etc/modprobe.d/zfs.conf
 update-initramfs -u
 ```
 
+This takes effect on next reboot. To apply immediately without rebooting:
+
+```bash
+echo 3221225472 > /sys/module/zfs/parameters/zfs_arc_max
+```
+
 ## Step 7 — Access the web GUI
 
 Open your browser and navigate to:
@@ -217,6 +236,8 @@ https://YOUR-SERVER-IP:8006
 ```
 
 Log in with **root** and **Linux PAM** authentication. The certificate is self-signed — accept the browser warning.
+
+**Security note:** The web GUI binds to all interfaces by default. On a Hetzner server with a public IP, port 8006 is exposed to the internet. For production setups, consider accessing it through an SSH tunnel (`ssh -L 8006:localhost:8006 root@YOUR-SERVER-IP`) or restricting access via Hetzner's Robot firewall.
 
 ## Step 8 — Security
 
@@ -264,6 +285,7 @@ systemctl restart ssh
 Optional but handy on a headless server:
 
 ```bash
+apt remove -y vim && \
 apt install -y neovim tmux
 ```
 
