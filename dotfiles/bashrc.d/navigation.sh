@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # Shell options for directory navigation and globbing
 
 # Correct minor cd typos

@@ -1,3 +1,4 @@
+# shellcheck shell=bash disable=SC1090,SC1091,SC2034
 # ~/.bashrc — single-file server/VPS configuration
 # No external dependencies
 # Tools like fd, rg get completions if installed — otherwise ignored.
@@ -5,20 +6,20 @@
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
-      *) return;;
+    *) return ;;
 esac
 
 # ---------------------------------------------------------------------------
 # Shell options
 # ---------------------------------------------------------------------------
 
-shopt -s checkwinsize   # update LINES/COLUMNS after each command
-shopt -s histappend     # append to history, don't overwrite
-shopt -s cmdhist        # multi-line commands as single history entry
-shopt -s histverify     # recalled commands go to prompt for editing
-shopt -s cdspell        # correct minor cd typos
-shopt -s dirspell       # correct typos during tab completion
-shopt -s globstar       # ** recursive globbing
+shopt -s checkwinsize # update LINES/COLUMNS after each command
+shopt -s histappend   # append to history, don't overwrite
+shopt -s cmdhist      # multi-line commands as single history entry
+shopt -s histverify   # recalled commands go to prompt for editing
+shopt -s cdspell      # correct minor cd typos
+shopt -s dirspell     # correct typos during tab completion
+shopt -s globstar     # ** recursive globbing
 
 # ---------------------------------------------------------------------------
 # History
@@ -50,7 +51,7 @@ elif command -v fdfind &>/dev/null; then
     alias fd='fdfind'
     eval "$(fdfind --gen-completions bash)"
 fi
-command -v rg  &>/dev/null && eval "$(rg --generate complete-bash)"
+command -v rg &>/dev/null && eval "$(rg --generate complete-bash)"
 # fzf: keybindings (Ctrl+R, Ctrl+T, Alt+C) + completion
 # fzf --bash requires 0.48+; Ubuntu 24.04 ships 0.44
 if command -v fzf &>/dev/null; then
@@ -74,7 +75,7 @@ fi
 
 # Detect color support
 case "$TERM" in
-    xterm-color|xterm-ghostty|*-256color|screen|screen-256color|tmux*|linux) color_prompt=yes;;
+    xterm-color | xterm-ghostty | *-256color | screen | tmux* | linux) color_prompt=yes ;;
 esac
 if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
     color_prompt=yes
@@ -97,19 +98,19 @@ if [ "$color_prompt" = yes ] && declare -F __git_ps1 &>/dev/null; then
     GIT_PS1_SHOWCOLORHINTS=1
     GIT_PS1_SHOWUPSTREAM="auto"
     case "$TERM" in
-    xterm*|rxvt*|tmux*)
-        PROMPT_COMMAND='__git_ps1 "\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]'"${_prefix}"'" "\\\$ "; history -a'
-        ;;
-    *)
-        PROMPT_COMMAND='__git_ps1 "'"${_prefix}"'" "\\\$ "; history -a'
-        ;;
+        xterm* | rxvt* | tmux*)
+            PROMPT_COMMAND='__git_ps1 "\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]'"${_prefix}"'" "\\\$ "; history -a'
+            ;;
+        *)
+            PROMPT_COMMAND='__git_ps1 "'"${_prefix}"'" "\\\$ "; history -a'
+            ;;
     esac
 elif [ "$color_prompt" = yes ]; then
     PS1="${_prefix}\$ "
     case "$TERM" in
-    xterm*|rxvt*|tmux*)
-        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-        ;;
+        xterm* | rxvt* | tmux*)
+            PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+            ;;
     esac
     PROMPT_COMMAND='history -a'
 else
@@ -124,7 +125,11 @@ unset color_prompt _user_color _host_color _path_color _reset _prefix
 # ---------------------------------------------------------------------------
 
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    if test -r ~/.dircolors; then
+        eval "$(dircolors -b ~/.dircolors)"
+    else
+        eval "$(dircolors -b)"
+    fi
 fi
 
 [ -x /usr/bin/lesspipe ] && eval "$(SHELL=/bin/sh lesspipe)"
@@ -178,7 +183,7 @@ alias ...='cd ../..'
 function ssh {
     command ssh "$@"
     local ret=$?
-    if (( ret != 0 )); then
+    if ((ret != 0)); then
         # Broken disconnect — RIS (Reset to Initial State): clears ALL terminal
         # state including kitty keyboard protocol stack, mouse tracking, alternate
         # screen, bracketed paste, etc. Same as terminal "Reset" menu item.
@@ -186,9 +191,9 @@ function ssh {
         printf '\x1bc'
     else
         # Clean exit — targeted cleanup (preserves screen content)
-        printf '\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l'  # mouse off
-        printf '\x1b[?1049l\x1b[?25h'   # leave alt screen, cursor visible
-        printf '\x1b[?2004l'             # bracketed paste off
+        printf '\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l' # mouse off
+        printf '\x1b[?1049l\x1b[?25h'                         # leave alt screen, cursor visible
+        printf '\x1b[?2004l'                                  # bracketed paste off
     fi
     # Flush kernel tty input buffer (discard queued escape sequences from nvim/remote)
     python3 -c "import termios,sys;termios.tcflush(sys.stdin.fileno(),termios.TCIFLUSH)" 2>/dev/null
@@ -240,89 +245,89 @@ bind '"\e[D": backward-char'
 #   rsyncssh :2222 user@host:/path /local/path    # custom port
 #   rsyncssh --port 2222 user@host:/path /local/
 rsyncssh() {
-  local port=22
-  local ssh_base_opts="-T -o Compression=no"
-  local -a args=()
+    local port=22
+    local ssh_base_opts="-T -o Compression=no"
+    local -a args=()
 
-  while [[ $# -gt 0 ]]; do
-    case "$1" in
-    --port | --ssh-port)
-      port="$2"
-      if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
-        echo "rsyncssh: invalid port: $port" >&2
-        return 1
-      fi
-      shift 2
-      ;;
-    :[0-9]*)
-      port="${1#:}"
-      if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
-        echo "rsyncssh: invalid port: $port" >&2
-        return 1
-      fi
-      shift
-      ;;
-    --)
-      shift
-      args+=("$@")
-      break
-      ;;
-    *)
-      args+=("$1")
-      shift
-      ;;
-    esac
-  done
+    while [[ $# -gt 0 ]]; do
+        case "$1" in
+            --port | --ssh-port)
+                port="$2"
+                if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+                    echo "rsyncssh: invalid port: $port" >&2
+                    return 1
+                fi
+                shift 2
+                ;;
+            :[0-9]*)
+                port="${1#:}"
+                if ! [[ "$port" =~ ^[0-9]+$ ]] || ((port < 1 || port > 65535)); then
+                    echo "rsyncssh: invalid port: $port" >&2
+                    return 1
+                fi
+                shift
+                ;;
+            --)
+                shift
+                args+=("$@")
+                break
+                ;;
+            *)
+                args+=("$1")
+                shift
+                ;;
+        esac
+    done
 
-  rsync -az --no-owner --no-group \
-    --info=progress2 \
-    --partial --partial-dir=.rsync-partial \
-    --human-readable --stats \
-    -e "ssh ${ssh_base_opts} -p ${port}" \
-    "${args[@]}"
+    rsync -az --no-owner --no-group \
+        --info=progress2 \
+        --partial --partial-dir=.rsync-partial \
+        --human-readable --stats \
+        -e "ssh ${ssh_base_opts} -p ${port}" \
+        "${args[@]}"
 }
 
 # Completion: strip rsyncssh-specific args and delegate to _rsync
 if ! declare -F _rsync >/dev/null 2>&1; then
-  if [[ -r /usr/share/bash-completion/completions/rsync ]]; then
-    . /usr/share/bash-completion/completions/rsync
-  fi
+    if [[ -r /usr/share/bash-completion/completions/rsync ]]; then
+        . /usr/share/bash-completion/completions/rsync
+    fi
 fi
 
 if declare -F _rsync >/dev/null 2>&1; then
-  _rsyncssh_complete() {
-    local i
-    local -a words=()
-    local new_cword=$COMP_CWORD
+    _rsyncssh_complete() {
+        local i
+        local -a words=()
+        local new_cword=$COMP_CWORD
 
-    words+=(rsync)
+        words+=(rsync)
 
-    for ((i = 1; i < ${#COMP_WORDS[@]}; i++)); do
-      case "${COMP_WORDS[i]}" in
-      --port | --ssh-port)
-        if ((i < COMP_CWORD)); then ((new_cword--)); fi
-        ((i++))
-        if ((i < COMP_CWORD)); then ((new_cword--)); fi
-        continue
-        ;;
-      :[0-9]*)
-        if ((i < COMP_CWORD)); then ((new_cword--)); fi
-        continue
-        ;;
-      esac
-      words+=("${COMP_WORDS[i]}")
-    done
+        for ((i = 1; i < ${#COMP_WORDS[@]}; i++)); do
+            case "${COMP_WORDS[i]}" in
+                --port | --ssh-port)
+                    if ((i < COMP_CWORD)); then ((new_cword--)); fi
+                    ((i++))
+                    if ((i < COMP_CWORD)); then ((new_cword--)); fi
+                    continue
+                    ;;
+                :[0-9]*)
+                    if ((i < COMP_CWORD)); then ((new_cword--)); fi
+                    continue
+                    ;;
+            esac
+            words+=("${COMP_WORDS[i]}")
+        done
 
-    local -a save_words=("${COMP_WORDS[@]}")
-    local save_cword=$COMP_CWORD
+        local -a save_words=("${COMP_WORDS[@]}")
+        local save_cword=$COMP_CWORD
 
-    COMP_WORDS=("${words[@]}")
-    COMP_CWORD=$new_cword
+        COMP_WORDS=("${words[@]}")
+        COMP_CWORD=$new_cword
 
-    _rsync
+        _rsync
 
-    COMP_WORDS=("${save_words[@]}")
-    COMP_CWORD=$save_cword
-  }
-  complete -o bashdefault -o default -o nospace -F _rsyncssh_complete rsyncssh
+        COMP_WORDS=("${save_words[@]}")
+        COMP_CWORD=$save_cword
+    }
+    complete -o bashdefault -o default -o nospace -F _rsyncssh_complete rsyncssh
 fi

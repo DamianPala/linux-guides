@@ -1,9 +1,10 @@
+# shellcheck shell=bash disable=SC1090,SC1091,SC2034
 # ~/.bashrc: executed by bash(1) for non-login shells.
 
 # If not running interactively, don't do anything
 case $- in
     *i*) ;;
-      *) return;;
+    *) return ;;
 esac
 
 # check the window size after each command and, if necessary,
@@ -37,57 +38,57 @@ fi
 
 if [[ -z "${STARSHIP_SHELL-}" ]]; then
 
-# Detect color support
-case "$TERM" in
-    xterm-color|xterm-ghostty|*-256color|screen|screen-256color|tmux*|linux) color_prompt=yes;;
-esac
-
-if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
-    color_prompt=yes
-fi
-
-# Color variables: root=red, regular user=cyan
-if [ "$(id -u)" -eq 0 ]; then
-    _user_color='\[\033[01;31m\]'
-else
-    _user_color='\[\033[01;36m\]'
-fi
-_host_color='\[\033[01;32m\]'
-_path_color='\[\033[01;34m\]'
-_reset='\[\033[00m\]'
-_prefix="${debian_chroot:+($debian_chroot)}${_user_color}\u${_reset}@${_host_color}\h${_reset}:${_path_color}\w${_reset}"
-
-if [ "$color_prompt" = yes ] && declare -F __git_ps1 &>/dev/null; then
-    # Git prompt via PROMPT_COMMAND (required for color hints)
-    GIT_PS1_SHOWDIRTYSTATE=1
-    GIT_PS1_SHOWUNTRACKEDFILES=1
-    GIT_PS1_SHOWCOLORHINTS=1
-    GIT_PS1_SHOWUPSTREAM="auto"
+    # Detect color support
     case "$TERM" in
-    xterm*|rxvt*|tmux*)
-        PROMPT_COMMAND='__git_ps1 "\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]'"${_prefix}"'" "\\\$ "'
-        ;;
-    *)
-        PROMPT_COMMAND='__git_ps1 "'"${_prefix}"'" "\\\$ "'
-        ;;
+        xterm-color | xterm-ghostty | *-256color | screen | tmux* | linux) color_prompt=yes ;;
     esac
-elif [ "$color_prompt" = yes ]; then
-    PS1="${_prefix}\$ "
-    case "$TERM" in
-    xterm*|rxvt*|tmux*)
-        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-        ;;
-    esac
-else
-    PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
-    case "$TERM" in
-    xterm*|rxvt*|tmux*)
-        PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
-        ;;
-    esac
-fi
 
-unset color_prompt _user_color _host_color _path_color _reset _prefix
+    if [ -x /usr/bin/tput ] && tput setaf 1 >&/dev/null; then
+        color_prompt=yes
+    fi
+
+    # Color variables: root=red, regular user=cyan
+    if [ "$(id -u)" -eq 0 ]; then
+        _user_color='\[\033[01;31m\]'
+    else
+        _user_color='\[\033[01;36m\]'
+    fi
+    _host_color='\[\033[01;32m\]'
+    _path_color='\[\033[01;34m\]'
+    _reset='\[\033[00m\]'
+    _prefix="${debian_chroot:+($debian_chroot)}${_user_color}\u${_reset}@${_host_color}\h${_reset}:${_path_color}\w${_reset}"
+
+    if [ "$color_prompt" = yes ] && declare -F __git_ps1 &>/dev/null; then
+        # Git prompt via PROMPT_COMMAND (required for color hints)
+        GIT_PS1_SHOWDIRTYSTATE=1
+        GIT_PS1_SHOWUNTRACKEDFILES=1
+        GIT_PS1_SHOWCOLORHINTS=1
+        GIT_PS1_SHOWUPSTREAM="auto"
+        case "$TERM" in
+            xterm* | rxvt* | tmux*)
+                PROMPT_COMMAND='__git_ps1 "\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]'"${_prefix}"'" "\\\$ "'
+                ;;
+            *)
+                PROMPT_COMMAND='__git_ps1 "'"${_prefix}"'" "\\\$ "'
+                ;;
+        esac
+    elif [ "$color_prompt" = yes ]; then
+        PS1="${_prefix}\$ "
+        case "$TERM" in
+            xterm* | rxvt* | tmux*)
+                PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+                ;;
+        esac
+    else
+        PS1='${debian_chroot:+($debian_chroot)}\u@\h:\w\$ '
+        case "$TERM" in
+            xterm* | rxvt* | tmux*)
+                PS1="\[\e]0;${debian_chroot:+($debian_chroot)}\u@\h: \w\a\]$PS1"
+                ;;
+        esac
+    fi
+
+    unset color_prompt _user_color _host_color _path_color _reset _prefix
 
 fi # end STARSHIP_SHELL guard
 
@@ -97,17 +98,21 @@ fi # end STARSHIP_SHELL guard
 
 # Enable color support for ls and grep
 if [ -x /usr/bin/dircolors ]; then
-    test -r ~/.dircolors && eval "$(dircolors -b ~/.dircolors)" || eval "$(dircolors -b)"
+    if test -r ~/.dircolors; then
+        eval "$(dircolors -b ~/.dircolors)"
+    else
+        eval "$(dircolors -b)"
+    fi
 fi
 
 # Colored man pages via less termcap variables
-export LESS_TERMCAP_mb=$'\e[1;31m'      # begin bold (blink)
-export LESS_TERMCAP_md=$'\e[1;36m'      # begin bold — cyan
-export LESS_TERMCAP_me=$'\e[0m'         # end mode
-export LESS_TERMCAP_so=$'\e[01;44;33m'  # begin standout — yellow on blue
-export LESS_TERMCAP_se=$'\e[0m'         # end standout
-export LESS_TERMCAP_us=$'\e[1;32m'      # begin underline — green
-export LESS_TERMCAP_ue=$'\e[0m'         # end underline
+export LESS_TERMCAP_mb=$'\e[1;31m'     # begin bold (blink)
+export LESS_TERMCAP_md=$'\e[1;36m'     # begin bold — cyan
+export LESS_TERMCAP_me=$'\e[0m'        # end mode
+export LESS_TERMCAP_so=$'\e[01;44;33m' # begin standout — yellow on blue
+export LESS_TERMCAP_se=$'\e[0m'        # end standout
+export LESS_TERMCAP_us=$'\e[1;32m'     # begin underline — green
+export LESS_TERMCAP_ue=$'\e[0m'        # end underline
 
 # ---------------------------------------------------------------------------
 # Environment

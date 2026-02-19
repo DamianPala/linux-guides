@@ -1,3 +1,4 @@
+# shellcheck shell=bash
 # history.sh — Enhanced bash history
 
 # Erase duplicates across entire history + ignore lines starting with space
@@ -25,5 +26,5 @@ shopt -s histverify
 # Flush each command to history file immediately (survive crashes)
 # Called by zzz-starship.sh precmd hook (after $? is captured)
 __history_flush() {
-  history -a
+    history -a
 }

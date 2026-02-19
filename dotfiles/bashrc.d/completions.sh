@@ -1,3 +1,4 @@
+# shellcheck shell=bash disable=SC1090,SC1091
 # completions.sh — dynamic tab-completion for CLI tools without system completions
 
 command -v bat &>/dev/null && eval "$(bat --completion bash)"
@@ -7,7 +8,7 @@ if command -v fd &>/dev/null; then
 elif command -v fdfind &>/dev/null; then
     eval "$(fdfind --gen-completions bash)"
 fi
-command -v rg  &>/dev/null && eval "$(rg --generate complete-bash)"
+command -v rg &>/dev/null && eval "$(rg --generate complete-bash)"
 [[ -f ~/.hatch-complete.bash ]] && . ~/.hatch-complete.bash
 
 # fzf: keybindings (Ctrl+R, Ctrl+T, Alt+C) + completion
