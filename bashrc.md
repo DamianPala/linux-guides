@@ -9,7 +9,7 @@ Bash configuration split into a clean base `~/.bashrc` and modular `~/.bashrc.d/
 ```
 ~/.bashrc              ← base: prompt with git, PATH, completion, module loader
 ~/.bashrc.d/
-  aliases.sh           ← eza, bat, nvim, grep
+  aliases.sh           ← eza, bat, nvim, grep, ssh wrapper
   ai.sh                ← Claude Code + Codex shortcuts
   completions.sh       ← tab-completion for bat, fd, rg, fzf
   history.sh           ← large crash-safe history
@@ -96,10 +96,17 @@ Hook execution order (after each command):
 | `fd` | `fdfind` |
 | `df` | `df -h` |
 | `free` | `free -h` |
-| `ssh` | `TERM=xterm-256color ssh` + reset kitty keyboard protocol on exit |
 | `sudo` | `sudo ` (trailing space triggers alias expansion on next word) |
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
+
+Also includes an `ssh()` wrapper function (exported with `export -f` so scripts inherit it):
+
+- **Terminfo auto-install**: on first connection to a host, installs `xterm-ghostty` terminfo via `infocmp`/`tic` and patches the remote `~/.bashrc` color detection to recognize `xterm-ghostty` (Debian/Ubuntu only, idempotent). Caches the result in `~/.cache/ssh-terminfo/`. Subsequent connections skip installation. Enables undercurl, colored underlines, and kitty keyboard protocol in remote nvim. Falls back to `xterm-256color` if install fails or `infocmp` is unavailable.
+- Sets `COLORTERM=truecolor` on the remote (appended to `~/.bashrc`, conditional on `TERM=xterm-ghostty`). Also forwarded via `SetEnv` for servers with `AcceptEnv COLORTERM`
+- On broken disconnect (non-zero exit): multi-pass terminal cleanup — suppresses echo, disables kitty keyboard protocol + mouse tracking, drains input buffer in rounds, then performs RIS (Reset to Initial State)
+- **Requires** Ghostty `ssh-env` and `ssh-terminfo` to be **disabled** in `shell-integration-features` (they overwrite the function after bashrc loads)
+- To force re-install terminfo on a host: `rm ~/.cache/ssh-terminfo/<user>@<host>:<port>`
 
 ### ai.sh
 
