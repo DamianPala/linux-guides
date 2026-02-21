@@ -33,7 +33,12 @@ EOF
 git config --global core.pager delta
 git config --global interactive.diffFilter "delta --color-only"
 git config --global delta.navigate true
+git config --global delta.line-numbers true
 git config --global delta.side-by-side false
+# difftastic aliases (AST-aware diffs alongside delta):
+git config --global alias.dlog '-c diff.external=difft log --ext-diff'
+git config --global alias.dshow '-c diff.external=difft show --ext-diff'
+git config --global alias.ddiff '-c diff.external=difft diff'
 ```
 
 ---
@@ -103,6 +108,7 @@ sudo apt install -y \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build pkg-config \
   libacl1-dev liblz4-dev libxxhash-dev libzstd-dev python3-dev \
   gdisk dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
+  sd shellcheck shfmt \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
   screen tmux trash-cli
 ```
@@ -113,7 +119,8 @@ sudo apt install -y \
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 cargo install --locked \
-  bat bottom du-dust eza fd-find git-delta ripgrep tealdeer uv
+  ast-grep bat bottom cargo-careful cargo-deny difftastic du-dust eza fd-find \
+  git-delta prek ripgrep tealdeer uv worktrunk
 sudo ln -s ~/.cargo/bin/{eza,bat,fd,rg} /usr/local/bin/
 ```
 
@@ -124,6 +131,33 @@ uv python install --default
 python -m pip install --break-system-packages argcomplete  # pure Python, no deps — safe
 sudo "$(dirname "$(readlink -f "$(which python)")")/activate-global-python-argcomplete"
 uv tool install hatch
+uv tool install ruff
+uv tool install pip-audit
+uv tool install pyright
+```
+
+### go
+
+```bash
+# Official installer — https://go.dev/dl/
+GO_VERSION=$(curl -s 'https://go.dev/dl/?mode=json' | jq -r '.[0].version')
+curl -fsSL "https://go.dev/dl/${GO_VERSION}.linux-amd64.tar.gz" | sudo tar -C /usr/local -xzf -
+echo 'export PATH="/usr/local/go/bin:$HOME/go/bin:$PATH"' >> ~/.bashrc
+source ~/.bashrc
+```
+
+```bash
+go install github.com/charmbracelet/glow/v2@latest
+go install github.com/mikefarah/yq/v4@latest
+```
+
+Glow config — render at full terminal width (default 80 cols is too narrow):
+
+```bash
+mkdir -p ~/.config/glow
+cat > ~/.config/glow/glow.yml << 'EOF'
+width: 0
+EOF
 ```
 
 ### flatpak
@@ -143,7 +177,6 @@ sudo snap install audacity
 sudo snap install chromium
 sudo snap install code --classic
 sudo snap install discord
-sudo snap install glow
 sudo snap install pycharm-community --classic
 sudo snap install obsidian --classic
 sudo snap install sublime-text --classic
@@ -157,7 +190,8 @@ sudo snap install zoom-client
 npm config set prefix ~/.local
 npm install -g @anthropic-ai/claude-code@latest
 npm install -g @openai/codex@latest
-npm install -g ccusage
+npm install -g agent-browser oxlint ccusage
+agent-browser install --with-deps
 ```
 
 ### Separate
