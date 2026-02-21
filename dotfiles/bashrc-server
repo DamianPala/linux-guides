@@ -52,6 +52,7 @@ elif command -v fdfind &>/dev/null; then
     eval "$(fdfind --gen-completions bash)"
 fi
 command -v rg &>/dev/null && eval "$(rg --generate complete-bash)"
+command -v bat &>/dev/null && eval "$(bat --completion bash)"
 # fzf: keybindings (Ctrl+R, Ctrl+T, Alt+C) + completion
 # fzf --bash requires 0.48+; Ubuntu 24.04 ships 0.44
 if command -v fzf &>/dev/null; then
@@ -170,9 +171,14 @@ alias ll='ls -alF'
 alias la='ls -A'
 alias l='ls -CF'
 
+command -v bat &>/dev/null && alias cat='bat -pp'
+
 alias grep='grep --color=auto'
 alias fgrep='grep -F --color=auto'
 alias egrep='grep -E --color=auto'
+
+# Colored GCC warnings and errors
+export GCC_COLORS='error=01;31:warning=01;35:note=01;36:caret=01;32:locus=01:quote=01'
 
 alias df='df -h'
 alias free='free -h'
