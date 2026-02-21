@@ -130,6 +130,35 @@ ssh() {
 }
 export -f ssh
 
+# Open files/URLs in GUI apps (macOS-style)
+# open file         → default app (xdg-open)
+# open file1 file2  → default app for each
+# open typora file  → auto-detect: typora is in PATH and not a file → use as app
+# open -a app file  → explicit app (always unambiguous)
+# open              → file manager in cwd
+open() {
+    if (( $# == 0 )); then
+        xdg-open . &>/dev/null & disown
+        return
+    fi
+
+    local app=""
+    if [[ "$1" == "-a" ]]; then
+        app="$2"; shift 2
+    elif (( $# > 1 )) && command -v "$1" &>/dev/null && [[ ! -e "$1" ]]; then
+        app="$1"; shift
+    fi
+
+    if [[ -n "$app" ]]; then
+        "$app" "$@" &>/dev/null & disown
+    else
+        local f
+        for f in "$@"; do
+            xdg-open "$f" &>/dev/null & disown
+        done
+    fi
+}
+
 # Expand aliases after sudo (trailing space triggers alias expansion on next word)
 alias sudo='sudo '
 
