@@ -156,6 +156,10 @@ Settings to configure after a fresh install. Paths follow Plasma 6 System Settin
   - Obsidian — icon fix (snap tray icon mismatch)
   - Signal — icon fix (snap tray icon mismatch)
 
+### Clipboard
+
+- System Tray → Clipboard icon → Configure Clipboard → **Clipboard history size: 60**
+
 ### Security & Privacy
 
 - Screen Locking → Lock screen automatically: **15 min**
