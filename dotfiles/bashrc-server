@@ -187,9 +187,11 @@ alias ...='cd ../..'
 
 # Restore terminal after SSH exits (clean or broken)
 function ssh {
+    local _start=$SECONDS
     command ssh "$@"
     local ret=$?
-    if ((ret != 0)); then
+    local _elapsed=$(( SECONDS - _start ))
+    if ((ret != 0 && _elapsed > 3)); then
         # Broken disconnect — RIS (Reset to Initial State): clears ALL terminal
         # state including kitty keyboard protocol stack, mouse tracking, alternate
         # screen, bracketed paste, etc. Same as terminal "Reset" menu item.
