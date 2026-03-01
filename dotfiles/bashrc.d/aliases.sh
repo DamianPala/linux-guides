@@ -130,11 +130,13 @@ REMOTE
     fi
 
     # --- Broken disconnect cleanup ---
-    # Only run after sessions that lasted >3s (skip connection refused, auth fail, etc.)
-    if ((ret != 0 && _elapsed > 3)); then
+    # ret=255 is SSH connection error (broken pipe, timeout). Codes 1-254 come from
+    # the remote command and don't indicate a broken terminal. _elapsed>3 skips
+    # quick failures (connection refused, auth fail).
+    if ((ret == 255 && _elapsed > 3)); then
         # Race: garbage bytes (kitty keyboard, mouse sequences) from the remote app
-        # continue arriving after a single reset, re-enabling modes.
-        # Fix: suppress echo → disable modes → drain in rounds → RIS last.
+        # continue arriving after disconnect, re-enabling modes.
+        # Fix: suppress echo → disable modes → drain in rounds → stty sane.
         printf '\x18\x1b\\'                 # CAN+ST: abort partial sequence
         stty -echo 2>/dev/null              # suppress garbage display
         printf '\x1b[=0;1u'                 # kitty kbd: flags=0
@@ -142,10 +144,10 @@ REMOTE
         printf '\x1b[?1000;1002;1003;1006l' # mouse tracking off
         printf '\x1b[?2004l'                # bracketed paste off
         printf '\x1b[?1049l'                # leave alternate screen
+        printf '\x1b[?25h'                  # cursor visible
         python3 -c "import termios,sys;termios.tcflush(sys.stdin.fileno(),termios.TCIFLUSH)" 2>/dev/null
         sleep 0.3
         python3 -c "import termios,sys;termios.tcflush(sys.stdin.fileno(),termios.TCIFLUSH)" 2>/dev/null
-        printf '\x1bc' # RIS: full terminal reset
         sleep 0.1
         python3 -c "import termios,sys;termios.tcflush(sys.stdin.fileno(),termios.TCIFLUSH)" 2>/dev/null
         stty sane 2>/dev/null

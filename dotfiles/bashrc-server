@@ -191,14 +191,8 @@ function ssh {
     command ssh "$@"
     local ret=$?
     local _elapsed=$(( SECONDS - _start ))
-    if ((ret != 0 && _elapsed > 3)); then
-        # Broken disconnect — RIS (Reset to Initial State): clears ALL terminal
-        # state including kitty keyboard protocol stack, mouse tracking, alternate
-        # screen, bracketed paste, etc. Same as terminal "Reset" menu item.
-        # Trade-off: clears screen (acceptable — it's garbled anyway).
-        printf '\x1bc'
-    else
-        # Clean exit — targeted cleanup (preserves screen content)
+    # ret=255 = SSH connection error (broken pipe, timeout). 1-254 = remote command exit.
+    if ((ret == 255 && _elapsed > 3)); then
         printf '\x1b[?1000l\x1b[?1002l\x1b[?1003l\x1b[?1006l' # mouse off
         printf '\x1b[?1049l\x1b[?25h'                         # leave alt screen, cursor visible
         printf '\x1b[?2004l'                                  # bracketed paste off
