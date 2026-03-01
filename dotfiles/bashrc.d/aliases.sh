@@ -56,6 +56,7 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo
 ssh() {
     local _term="xterm-256color"
     local _opts=(-o "SetEnv COLORTERM=truecolor")
+    local _remote_cmd=()
 
     # --- Terminfo auto-install ---
     # Install xterm-ghostty terminfo on remote (once per host, cached).
@@ -76,38 +77,61 @@ ssh() {
             if [[ -f "$_cache" ]]; then
                 _term="xterm-ghostty"
             else
-                local _ti
-                _ti=$(infocmp -0 -x xterm-ghostty 2>/dev/null)
-                if [[ -n "$_ti" ]]; then
-                    echo "Setting up xterm-ghostty terminfo on $_host..." >&2
-                    if echo "$_ti" | command ssh "$@" \
-                        'if ! infocmp xterm-ghostty &>/dev/null; then
-                 command -v tic &>/dev/null || exit 1
-                 mkdir -p ~/.terminfo 2>/dev/null && tic -x - 2>/dev/null || exit 1
-               fi
-               if [ -f ~/.bashrc ] && grep -q xterm-color ~/.bashrc 2>/dev/null \
-                    && ! grep -q xterm-ghostty ~/.bashrc 2>/dev/null; then
-                 sed -i "/color_prompt/s/xterm-color/xterm-ghostty | xterm-color/" ~/.bashrc 2>/dev/null
-               fi
-               if [ -f ~/.bashrc ] && ! grep -q "COLORTERM=truecolor" ~/.bashrc 2>/dev/null; then
-                 printf "\n[ \"\$TERM\" = \"xterm-ghostty\" ] && export COLORTERM=truecolor\n" >> ~/.bashrc
-               fi' \
-                        2>/dev/null; then
-                        _term="xterm-ghostty"
-                        mkdir -p "${_cache%/*}" 2>/dev/null
-                        touch "$_cache"
-                    fi
+                local _ti_b64
+                _ti_b64=$(infocmp -0 -x xterm-ghostty 2>/dev/null | base64 -w0)
+                if [[ -n "$_ti_b64" ]]; then
+                    _term="xterm-ghostty"
+                    # Inline install: embed terminfo as base64 in the remote
+                    # command, then exec login shell. One connection, one
+                    # password, MOTD preserved. Only on first connect per host.
+                    _opts+=(-t)
+                    _remote_cmd=("$(cat <<REMOTE
+if ! infocmp xterm-ghostty &>/dev/null 2>&1; then
+    if command -v tic &>/dev/null; then
+        if echo '${_ti_b64}' | base64 -d | tic -x - 2>/dev/null; then
+            if ! echo '${_ti_b64}' | base64 -d | sudo -n tic -x -o /usr/share/terminfo - 2>/dev/null; then
+                printf '\n  \033[33m⚠ terminfo installed for your user only. Run this to fix sudo:\033[0m\n'
+                printf '  sudo cp ~/.terminfo/x/xterm-ghostty /usr/share/terminfo/x/\n\n'
+            fi
+        else
+            printf '\n  \033[33m⚠ Could not install terminfo (read-only filesystem?).\033[0m\n'
+            printf '  \033[33mFrom your local machine, run:\033[0m\n'
+            printf '  infocmp -0 -x xterm-ghostty | command ssh %s \"mkdir -p ~/.terminfo && tic -x -\"\n\n' "\$(whoami)@\$(hostname)"
+        fi
+    fi
+fi
+if [ -f ~/.bashrc ] && grep -q xterm-color ~/.bashrc 2>/dev/null \
+     && ! grep -q xterm-ghostty ~/.bashrc 2>/dev/null; then
+    sed -i '/color_prompt/s/xterm-color/xterm-ghostty | xterm-color/' ~/.bashrc 2>/dev/null
+fi
+if [ -f ~/.bashrc ] && ! grep -q 'COLORTERM=truecolor' ~/.bashrc 2>/dev/null; then
+    printf '\n[ "\$TERM" = "xterm-ghostty" ] && export COLORTERM=truecolor\n' >> ~/.bashrc
+fi
+cat /run/motd.dynamic 2>/dev/null || cat /etc/motd 2>/dev/null
+exec \$SHELL -l
+REMOTE
+)")
+                    local _need_cache=1
                 fi
             fi
         fi
     fi
 
     # --- Connect ---
-    TERM="$_term" command ssh "${_opts[@]}" "$@"
+    local _start=$SECONDS
+    TERM="$_term" command ssh "${_opts[@]}" "$@" "${_remote_cmd[@]}"
     local ret=$?
+    local _elapsed=$(( SECONDS - _start ))
+
+    # Cache terminfo only after successful connection
+    if [[ "${_need_cache:-}" == 1 ]] && ((ret == 0)); then
+        mkdir -p "${_cache%/*}" 2>/dev/null
+        touch "$_cache"
+    fi
 
     # --- Broken disconnect cleanup ---
-    if ((ret != 0)); then
+    # Only run after sessions that lasted >3s (skip connection refused, auth fail, etc.)
+    if ((ret != 0 && _elapsed > 3)); then
         # Race: garbage bytes (kitty keyboard, mouse sequences) from the remote app
         # continue arriving after a single reset, re-enabling modes.
         # Fix: suppress echo → disable modes → drain in rounds → RIS last.

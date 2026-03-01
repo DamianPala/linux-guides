@@ -9,7 +9,7 @@ Bash configuration split into a clean base `~/.bashrc` and modular `~/.bashrc.d/
 ```
 ~/.bashrc              ← base: prompt with git, PATH, completion, module loader
 ~/.bashrc.d/
-  aliases.sh           ← eza, bat, nvim, grep, ssh wrapper
+  aliases.sh           ← eza, bat, nvim, grep, ssh wrapper, open
   ai.sh                ← Claude Code + Codex shortcuts
   completions.sh       ← tab-completion for bat, fd, rg, fzf
   history.sh           ← large crash-safe history
@@ -100,13 +100,22 @@ Hook execution order (after each command):
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
 
-Also includes an `ssh()` wrapper function (exported with `export -f` so scripts inherit it):
+Includes an `ssh()` wrapper function (exported with `export -f` so scripts inherit it):
 
-- **Terminfo auto-install**: on first connection to a host, installs `xterm-ghostty` terminfo via `infocmp`/`tic` and patches the remote `~/.bashrc` color detection to recognize `xterm-ghostty` (Debian/Ubuntu only, idempotent). Caches the result in `~/.cache/ssh-terminfo/`. Subsequent connections skip installation. Enables undercurl, colored underlines, and kitty keyboard protocol in remote nvim. Falls back to `xterm-256color` if install fails or `infocmp` is unavailable.
-- Sets `COLORTERM=truecolor` on the remote (appended to `~/.bashrc`, conditional on `TERM=xterm-ghostty`). Also forwarded via `SetEnv` for servers with `AcceptEnv COLORTERM`
-- On broken disconnect (non-zero exit): multi-pass terminal cleanup — suppresses echo, disables kitty keyboard protocol + mouse tracking, drains input buffer in rounds, then performs RIS (Reset to Initial State)
+- **Terminfo auto-install**: on first connection to a host, embeds `xterm-ghostty` terminfo as base64 in the SSH command and installs it inline with `tic`. Single SSH connection, single password prompt. Patches the remote `~/.bashrc` to recognize `xterm-ghostty` in color detection and sets `COLORTERM=truecolor`. Displays MOTD after install (`/run/motd.dynamic` on Ubuntu, `/etc/motd` elsewhere). Caches the result in `~/.cache/ssh-terminfo/`. Subsequent connections skip installation and use plain interactive SSH. Falls back to `xterm-256color` if `infocmp` is unavailable
+- **System-wide install**: tries `sudo -n tic` (non-interactive) to install into `/usr/share/terminfo/` so `sudo` commands that use `tput` can find the entry. If passwordless sudo isn't available, shows a one-liner to run manually. On read-only filesystems (e.g. PiKVM), shows a command to install from the local machine
+- Sets `COLORTERM=truecolor` via `SetEnv` for servers with `AcceptEnv COLORTERM`
+- On broken disconnect (non-zero exit after session >3s): multi-pass terminal cleanup — suppresses echo, disables kitty keyboard protocol + mouse tracking, drains input buffer in rounds, then performs RIS (Reset to Initial State). Short-lived failures (connection refused, auth fail) skip cleanup entirely
 - **Requires** Ghostty `ssh-env` and `ssh-terminfo` to be **disabled** in `shell-integration-features` (they overwrite the function after bashrc loads)
 - To force re-install terminfo on a host: `rm ~/.cache/ssh-terminfo/<user>@<host>:<port>`
+
+Also includes an `open()` function for opening files/URLs in GUI apps from the terminal (macOS-style):
+
+- `open file.md` — default app (xdg-open)
+- `open file1 file2` — default app for each
+- `open typora file.md` — auto-detect: first arg is in PATH and not a file → use as app
+- `open -a app file` — explicit app (always unambiguous)
+- `open` — file manager in cwd
 
 ### ai.sh
 
