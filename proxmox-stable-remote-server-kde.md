@@ -563,17 +563,8 @@ sudo apt install -y \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build pkg-config \
   fzf htop iotop iftop jq lm-sensors nethogs nload npm p7zip-full pv \
   sd shellcheck shfmt tmux \
-  iperf3 nmap socat sshfs traceroute wireguard \
+  apparmor-utils iperf3 nmap socat sshfs traceroute wireguard \
   fail2ban nftables
-```
-
-### Security: fail2ban
-
-fail2ban works out of the box for SSH. Verify it's running:
-
-```bash
-sudo systemctl enable --now fail2ban
-sudo fail2ban-client status sshd
 ```
 
 ### Rust toolchain + cargo
@@ -715,6 +706,132 @@ cp ~/.bashrc ~/.bashrc.bak 2>/dev/null
 wget -qO ~/.bashrc https://raw.githubusercontent.com/DamianPala/linux-guides/main/dotfiles/bashrc-server
 sudo cp ~/.bashrc /root/.bashrc
 source ~/.bashrc
+```
+
+## Step 10: Security
+
+### fail2ban
+
+fail2ban works out of the box for SSH. Verify it's running:
+
+```bash
+sudo systemctl enable --now fail2ban
+sudo fail2ban-client status sshd
+```
+
+### AppArmor: fix WireGuard
+
+Kubuntu 25.10 ships an AppArmor profile for `wg-quick` that is too restrictive (blocks `/proc/*/mounts` reads and `cap_net_bind_service` for `ip`). This prevents `wg-quick up` from working. Disable the profile:
+
+```bash
+sudo aa-disable /usr/bin/wg-quick
+```
+
+### SSH hardening
+
+Requires SSH key already deployed (`ssh-copy-id` from client).
+
+```bash
+sudo sed -i 's/^#\?PermitRootLogin.*/PermitRootLogin no/' /etc/ssh/sshd_config
+sudo sed -i 's/^#\?PasswordAuthentication.*/PasswordAuthentication no/' /etc/ssh/sshd_config
+sudo systemctl reload ssh
+```
+
+### Firewall (nftables)
+
+```bash
+sudo systemctl enable --now nftables
+```
+
+Install `nftables-apply` (safe remote rule changes with automatic rollback on timeout):
+
+```bash
+sudo wget -O /usr/sbin/nftables-apply \
+  https://gist.githubusercontent.com/fbouynot/00f89f4bcaa2b1fa4b9f70b24ebc8cc6/raw/78039c92341f84f8e53651497cbd24ba627f5483/nftables-apply
+sudo chmod a+x /usr/sbin/nftables-apply
+```
+
+Usage: edit `/etc/nftables-candidate.conf`, then run `sudo nftables-apply`. If you don't confirm within 30s (e.g. you got locked out), it rolls back to the previous ruleset. On confirm, candidate becomes the active `/etc/nftables.conf`.
+
+Deploy and apply:
+
+```bash
+sudo tee /etc/nftables-candidate.conf << 'EOF'
+#!/usr/sbin/nft -f
+flush ruleset
+
+define WAN_IF = "ens18"
+define WG_IF  = "wg0"
+define WG_NET = 10.0.11.0/24
+
+table inet filter {
+
+    set wan_tcp_ports {
+        type inet_service
+        elements = { 22, 443 }     # SSH, HTTPS
+    }
+
+    set wan_udp_ports {
+        type inet_service
+        elements = { 443 }         # WireGuard
+    }
+
+    chain input {
+        type filter hook input priority 0; policy drop;
+
+        # Allow existing connections, drop broken packets, allow loopback
+        ct state established,related accept
+        ct state invalid drop
+        iif lo accept
+
+        # Anti-spoof: drop private/bogon sources on WAN
+        iifname $WAN_IF ip saddr {
+            10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16,
+            169.254.0.0/16, 127.0.0.0/8
+        } drop
+
+        # Anti-flood
+        tcp flags & (fin|syn|rst|ack) != syn ct state new drop
+        tcp flags == 0x0 drop
+
+        # ICMP (rate-limited)
+        ip protocol icmp icmp type {
+            echo-request, destination-unreachable, time-exceeded
+        } limit rate 5/second burst 10 packets accept
+
+        # WireGuard tunnel — trust authenticated peers
+        iifname $WG_IF ip saddr $WG_NET accept
+
+        # Public services (edit sets above)
+        iifname $WAN_IF tcp dport @wan_tcp_ports accept
+        iifname $WAN_IF udp dport @wan_udp_ports accept
+
+        # Note: IPv6 not used on this host
+        reject
+    }
+
+    chain forward {
+        type filter hook forward priority 0; policy drop;
+
+        # Allow existing connections, drop broken packets
+        ct state established,related accept
+        ct state invalid drop
+
+        # Anti-spoof on WAN ingress
+        iifname $WAN_IF ip saddr {
+            10.0.0.0/8, 172.16.0.0/12, 192.168.0.0/16,
+            169.254.0.0/16, 127.0.0.0/8
+        } drop
+    }
+
+    chain output {
+        type filter hook output priority 0; policy accept;
+    }
+}
+EOF
+
+sudo nftables-apply -t 5
+sudo nft list ruleset
 ```
 
 ## References
