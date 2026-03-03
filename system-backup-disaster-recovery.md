@@ -528,6 +528,23 @@ checks:
 
 # Hooks
 commands:
+    # Desktop notifications
+    - before: configuration
+      when: [create]
+      run:
+          - /usr/local/bin/backup-notify.sh start || true
+    - after: configuration
+      when: [create]
+      states: [finish]
+      run:
+          - /usr/local/bin/backup-notify.sh finish || true
+    - after: configuration
+      when: [create]
+      states: [fail]
+      run:
+          - /usr/local/bin/backup-notify.sh fail || true
+
+    # Per-repository hooks
     - before: action
       when: [create]
       run:
@@ -552,7 +569,9 @@ EOF
 
 ### Secure Passphrase Storage with systemd Credentials
 
-Instead of storing the Borg passphrase in plaintext, use systemd's encrypted credential store. The passphrase will be encrypted on disk (TPM-backed when available) and only accessible to the borgmatic service.
+Instead of storing the Borg passphrase in plaintext, use systemd's encrypted credential store. The passphrase will be encrypted on disk using a host-local key (`/var/lib/systemd/credential.secret`) and only accessible to the borgmatic service.
+
+Why `--with-key=host` instead of TPM2? With LUKS on root, the disk is already encrypted at rest. TPM-sealed credentials add no practical security (root on a running system can decrypt both), but break after every kernel or firmware update when PCR values change.
 
 Create the encrypted credential:
 
@@ -562,7 +581,7 @@ sudo mkdir -p /etc/credstore.encrypted
 
 # Store your Borg passphrase as encrypted credential
 read -rsp "Borg passphrase: " BORG_PASS && echo
-echo -n "$BORG_PASS" | sudo systemd-creds encrypt --name=borg-passphrase - /etc/credstore.encrypted/borg-passphrase
+echo -n "$BORG_PASS" | sudo systemd-creds encrypt --with-key=host --name=borg-passphrase - /etc/credstore.encrypted/borg-passphrase
 unset BORG_PASS
 
 # Protect the credential file
@@ -643,8 +662,14 @@ LoadCredentialEncrypted=borg-passphrase:/etc/credstore.encrypted/borg-passphrase
 # SSH key for borg (needed by hook commands that call borg directly)
 Environment="BORG_RSH=ssh -i /home/$USER/.ssh/backup_append_only"
 
+# Desktop notifications — set to 0 to disable
+Environment="BORGMATIC_NOTIFY=1"
+
 # Pass passphrase to borgmatic via environment variable
 ExecStart=/bin/bash -c 'BORG_PASSPHRASE=$(cat \${CREDENTIALS_DIRECTORY}/borg-passphrase) /usr/local/bin/borgmatic --verbosity 1'
+
+# Clean up tray icon if borgmatic is killed before finish/fail hooks fire
+ExecStopPost=-/bin/bash -c 'systemctl stop borgmatic-tray-icon.service 2>/dev/null; rm -f /run/borgmatic-notify.start'
 
 # Security settings (based on official borgmatic sample)
 LockPersonality=true
@@ -691,7 +716,44 @@ sudo systemctl start borgmatic.service
 journalctl -u borgmatic -f
 ```
 
-## Step 11: NAS-Side Snapshot Protection (Synology DSM 7.2+)
+## Step 11: Desktop Notifications (Optional)
+
+Get desktop notifications and a system tray icon during borgmatic backups — tray icon while running, success with duration on completion, persistent error on failure. Requires `notify-send` and `python3-pyqt6` (both pre-installed on KDE Plasma; the tray icon is silently skipped if PyQt6 or a system tray is missing).
+
+Since borgmatic runs as root but notifications need the user's desktop session, `backup-notify.sh` detects the active graphical session via `loginctl` and uses `systemd-run --uid=USER` to run `notify-send` and the tray icon as the session user.
+
+### Install notification scripts
+
+```bash
+sudo install -m 755 dotfiles/scripts/backup-notify.sh /usr/local/bin/
+sudo install -m 755 dotfiles/scripts/backup-tray-icon.py /usr/local/bin/
+```
+
+The borgmatic hooks (Step 8 config) and `BORGMATIC_NOTIFY=1` switch (Step 10 service) are already included in those steps.
+
+### Test manually
+
+```bash
+# Simulates what borgmatic hooks do (as root)
+sudo BORGMATIC_NOTIFY=1 /usr/local/bin/backup-notify.sh start   # tray icon + notification
+sleep 3
+sudo BORGMATIC_NOTIFY=1 /usr/local/bin/backup-notify.sh finish  # "Backup completed (3s)"
+
+# Failure path — notification stays until dismissed
+sudo BORGMATIC_NOTIFY=1 /usr/local/bin/backup-notify.sh start
+sleep 2
+sudo BORGMATIC_NOTIFY=1 /usr/local/bin/backup-notify.sh fail    # "Backup FAILED after 2s"
+```
+
+### Disable notifications
+
+Change `BORGMATIC_NOTIFY=1` to `BORGMATIC_NOTIFY=0` in `/etc/systemd/system/borgmatic.service` and reload:
+
+```bash
+sudo systemctl daemon-reload
+```
+
+## Step 12: NAS-Side Snapshot Protection (Synology DSM 7.2+)
 
 This step implements the critical "NAS snapshots" layer from the Security Model above.
 
@@ -741,7 +803,7 @@ After at least one scheduled snapshot runs:
 2. **File Station** → navigate to `backup` shared folder → `#snapshot` subfolder — browse read-only snapshot contents
 3. Check snapshot size: **Snapshot Replication → Snapshots → Action → Calculate Snapshot Size**
 
-## Step 12: Automatic Pruning on NAS
+## Step 13: Automatic Pruning on NAS
 
 Without pruning, your repo grows forever. `borg compact` must run on the NAS (without `--append-only`) to reclaim space—but this also makes soft-deletes permanent. The maintenance script below includes safety checks (see Security Model) to detect anomalies before finalizing deletions.
 
@@ -890,7 +952,7 @@ sudo chmod +x /usr/local/bin/borg-maintenance.sh
 
 Archive count checks (1 and 2) only activate once the repo has reached MIN_ARCHIVES (5 by default). On a fresh setup it takes several days of daily backups to accumulate enough archives — the script logs this and proceeds without checks until then.
 
-If any check fails, the script exits with a non-zero code, which triggers DSM's email notification (configured below). All soft-deleted data remains recoverable from NAS immutable snapshots (Step 11) until you investigate and resolve the issue.
+If any check fails, the script exits with a non-zero code, which triggers DSM's email notification (configured below). All soft-deleted data remains recoverable from NAS immutable snapshots (Step 12) until you investigate and resolve the issue.
 
 ### Test Manually
 
@@ -904,7 +966,7 @@ sudo tail -20 /var/log/borg-maintenance.log
 
 1. **Control Panel → Task Scheduler → Create → Scheduled Task → User-defined script**
 2. **General:** Task name: `Borg Maintenance`, User: `root`
-3. **Schedule:** Weekly, Sunday 6:00 AM (after the daily backup and after the daily NAS snapshot from Step 11)
+3. **Schedule:** Weekly, Sunday 6:00 AM (after the daily backup and after the daily NAS snapshot from Step 12)
 4. **Task Settings:**
    - Run command: `/usr/local/bin/borg-maintenance.sh`
    - Check **Send run details by email**
@@ -1003,7 +1065,7 @@ borg delete ssh://${NAS}${REPO_PATH}::archive-name
 borg delete --glob-archives 'laptop-2025-01-*' ssh://${NAS}${REPO_PATH}
 ```
 
-In append-only mode, these are soft deletes. Data remains until `borg compact` runs on the NAS (Step 12).
+In append-only mode, these are soft deletes. Data remains until `borg compact` runs on the NAS (Step 13).
 
 **From NAS (permanent deletion — no undo):**
 
@@ -1429,12 +1491,12 @@ sudo dracut -f --regenerate-all
 
 #### Re-create systemd encrypted credential
 
-`systemd-creds encrypt` binds credentials to the TPM2 chip and host key (`/var/lib/systemd/credential.secret`). After restoring to new hardware, the borgmatic service will fail to decrypt the old credential. Re-create it:
+`systemd-creds encrypt --with-key=host` binds credentials to the host key (`/var/lib/systemd/credential.secret`). After restoring to new hardware, this key won't exist, so the borgmatic service will fail to decrypt the old credential. Re-create it:
 
 ```bash
 sudo mkdir -p /etc/credstore.encrypted
 read -rsp "Borg passphrase: " BORG_PASS && echo
-echo -n "$BORG_PASS" | sudo systemd-creds encrypt --name=borg-passphrase - /etc/credstore.encrypted/borg-passphrase
+echo -n "$BORG_PASS" | sudo systemd-creds encrypt --with-key=host --name=borg-passphrase - /etc/credstore.encrypted/borg-passphrase
 unset BORG_PASS
 sudo chmod 600 /etc/credstore.encrypted/borg-passphrase
 ```
