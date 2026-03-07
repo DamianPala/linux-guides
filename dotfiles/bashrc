@@ -131,6 +131,13 @@ fi
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 [[ -d "$HOME/.zvm" ]] && PATH="$HOME/.zvm/bin:$HOME/.zvm/self:$PATH"
 
+# API keys and secrets (set -a auto-exports all variables)
+if [[ -r "$HOME/.config/secrets/base.env" ]]; then
+    set -a
+    . "$HOME/.config/secrets/base.env"
+    set +a
+fi
+
 # ---------------------------------------------------------------------------
 # Aliases
 # ---------------------------------------------------------------------------

@@ -159,6 +159,13 @@ fi
 [[ -d "$HOME/.local/bin" ]] && PATH="$HOME/.local/bin:$PATH"
 [[ -f "$HOME/.cargo/env" ]] && . "$HOME/.cargo/env"
 
+# API keys and secrets (set -a auto-exports all variables)
+if [[ -r "$HOME/.config/secrets/base.env" ]]; then
+    set -a
+    . "$HOME/.config/secrets/base.env"
+    set +a
+fi
+
 # Ghostty truecolor hint (set when connecting from Ghostty terminal)
 [ "$TERM" = "xterm-ghostty" ] && export COLORTERM=truecolor
 
@@ -333,3 +340,7 @@ if declare -F _rsync >/dev/null 2>&1; then
     }
     complete -o bashdefault -o default -o nospace -F _rsyncssh_complete rsyncssh
 fi
+
+# ---------------------------------------------------------------------------
+# Auto-added by installers below this line
+# ---------------------------------------------------------------------------
