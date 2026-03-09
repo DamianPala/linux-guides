@@ -2,26 +2,27 @@
 #
 # WireGuard Setup Script
 #
-# Usage: setup_wireguard.sh [options] [interface]
+# Usage: setup-wireguard [options] [interface]
 #
-# First run:  Interactive setup (server or client mode)
-# Next runs:  Peer management menu (add/remove/list/uninstall)
+# Auto-detects configured WireGuard interfaces and shows management menu.
+# If no interfaces found, offers to run setup wizard.
 #
 # Arguments:
-#   interface         WireGuard interface name (default: wg0)
+#   interface         WireGuard interface name (auto-detected or specified)
 #
 # Options:
 #   -h, --help        Show this help
+#   -i, --install     Run setup wizard (server or client)
 #   -l, --list        List peers and exit
 #   -a, --add         Add a peer and exit
 #   -r, --remove      Remove a peer and exit
 #
 # Examples:
-#   ./setup_wireguard.sh              # First run: setup wizard
-#   ./setup_wireguard.sh              # Next run: management menu
-#   ./setup_wireguard.sh wg1          # Use interface wg1
-#   ./setup_wireguard.sh -l           # List peers on wg0
-#   ./setup_wireguard.sh -a wg1       # Add peer to wg1
+#   setup-wireguard                   # Auto-detect interfaces, show menu
+#   setup-wireguard -i                # Run setup wizard
+#   setup-wireguard -l                # List peers (auto-detect interface)
+#   setup-wireguard -a wg1            # Add peer to wg1
+#   setup-wireguard wg0               # Management menu for wg0
 #
 # Features:
 #   1.  Auto-install WireGuard + qrencode if missing (apt)
@@ -72,6 +73,48 @@ get_local_interface() {
     ip route | awk '/^default/{print $5; exit}'
 }
 
+# Detect configured WireGuard interfaces from /etc/wireguard/*.conf
+detect_interfaces() {
+    sudo find /etc/wireguard -maxdepth 1 -name '*.conf' -printf '%f\n' 2>/dev/null \
+        | sed 's/\.conf$//' | grep . | sort
+}
+
+# Pick interface: use provided name, auto-detect, or prompt
+pick_interface() {
+    local provided="$1"
+
+    if [[ -n "$provided" ]]; then
+        echo "$provided"
+        return
+    fi
+
+    local interfaces
+    interfaces="$(detect_interfaces)"
+    local count
+    count="$(echo "$interfaces" | grep -c . || true)"
+
+    if [[ "$count" -eq 0 ]]; then
+        echo ""
+        return
+    elif [[ "$count" -eq 1 ]]; then
+        echo "$interfaces"
+        return
+    fi
+
+    echo "Available interfaces:" >&2
+    local i=1
+    while IFS= read -r iface; do
+        echo "  $i) $iface" >&2
+        i=$((i + 1))
+    done <<< "$interfaces"
+    echo "" >&2
+
+    local choice
+    read -r -p "Select interface [1]: " choice
+    choice="${choice:-1}"
+    echo "$interfaces" | sed -n "${choice}p"
+}
+
 get_nat_postup() {
     local iface="$1"
     if command -v iptables &>/dev/null; then
@@ -101,7 +144,7 @@ list_peers() {
     local conf_file
     conf_file="$(get_wg_conf_file "$wg_interface")"
 
-    if [[ ! -f "$conf_file" ]]; then
+    if ! sudo test -f "$conf_file"; then
         echo "Config file not found: $conf_file"
         return 1
     fi
@@ -186,7 +229,7 @@ add_peer() {
     local conf_file
     conf_file="$(get_wg_conf_file "$wg_interface")"
 
-    if [[ ! -f "$conf_file" ]]; then
+    if ! sudo test -f "$conf_file"; then
         echo "Config file not found: $conf_file"
         return 1
     fi
@@ -253,11 +296,13 @@ add_peer() {
     local client_ip
     client_ip="$(prompt "Enter client IP (e.g. 10.0.0.2/24)" "")"
 
-    local client_dns
-    client_dns="$(prompt "Enter client DNS" "8.8.8.8,1.1.1.1")"
-
     local client_allowed_ips
     client_allowed_ips="$(prompt "Enter client AllowedIPs" "0.0.0.0/0")"
+
+    local client_dns_default=""
+    [[ "$client_allowed_ips" == "0.0.0.0/0" ]] && client_dns_default="1.1.1.1,8.8.8.8"
+    local client_dns
+    client_dns="$(prompt "Enter client DNS (empty = use system DNS)" "$client_dns_default")"
 
     local client_keepalive
     client_keepalive="$(prompt "Enter PersistentKeepalive (0 to disable)" "25")"
@@ -266,7 +311,7 @@ add_peer() {
     client_conf+="[Interface]"$'\n'
     client_conf+="PrivateKey = $peer_private_key"$'\n'
     client_conf+="Address = $client_ip"$'\n'
-    client_conf+="DNS = $client_dns"$'\n'
+    [[ -n "$client_dns" ]] && client_conf+="DNS = $client_dns"$'\n'
     [[ -n "$server_mtu" ]] && client_conf+="MTU = $server_mtu"$'\n'
     client_conf+=""$'\n'
     client_conf+="[Peer]"$'\n'
@@ -299,7 +344,7 @@ remove_peer() {
     local conf_file
     conf_file="$(get_wg_conf_file "$wg_interface")"
 
-    if [[ ! -f "$conf_file" ]]; then
+    if ! sudo test -f "$conf_file"; then
         echo "Config file not found: $conf_file"
         return 1
     fi
@@ -532,8 +577,6 @@ setup_client() {
     wg_interface_ip="$(prompt "Enter Interface IP" "10.0.0.2/24")"
     local mtu
     mtu="$(prompt "Enter MTU" "1400")"
-    local dns
-    dns="$(prompt "Enter DNS" "8.8.8.8,1.1.1.1")"
 
     local server_public_key
     server_public_key="$(prompt "Enter WG Server Public Key" "")"
@@ -543,6 +586,11 @@ setup_client() {
     endpoint="$(prompt "Enter Endpoint" ":51820")"
     local allowed_ips
     allowed_ips="$(prompt "Enter Allowed IPs" "0.0.0.0/0")"
+
+    local dns_default=""
+    [[ "$allowed_ips" == "0.0.0.0/0" ]] && dns_default="1.1.1.1,8.8.8.8"
+    local dns
+    dns="$(prompt "Enter DNS (empty = use system DNS)" "$dns_default")"
     local persistent_keepalive
     persistent_keepalive="$(prompt "Enter Persistent Keepalive (0 to disable)" "25")"
 
@@ -569,27 +617,23 @@ PostDown = ip route del 192.168.0.0/16 dev $local_interface table main 2>/dev/nu
 
     sudo mkdir -p "$(get_wg_conf_dir)"
 
-    local psk_line=""
-    [[ -n "$preshared_key" ]] && psk_line="PresharedKey = $preshared_key"
+    local conf_content=""
+    conf_content+="[Interface]"$'\n'
+    conf_content+="PrivateKey = $private_key"$'\n'
+    conf_content+="# PublicKey = $public_key"$'\n'
+    conf_content+="Address = $wg_interface_ip"$'\n'
+    [[ -n "$dns" ]] && conf_content+="DNS = $dns"$'\n'
+    conf_content+="MTU = $mtu"$'\n'
+    [[ -n "$postup_rules" ]] && conf_content+="$postup_rules"$'\n'
+    conf_content+=$'\n'
+    conf_content+="[Peer]"$'\n'
+    conf_content+="PublicKey = $server_public_key"$'\n'
+    [[ -n "$preshared_key" ]] && conf_content+="PresharedKey = $preshared_key"$'\n'
+    conf_content+="Endpoint = $endpoint"$'\n'
+    conf_content+="AllowedIPs = $allowed_ips"$'\n'
+    [[ "$persistent_keepalive" != "0" ]] && conf_content+="PersistentKeepalive = $persistent_keepalive"$'\n'
 
-    local keepalive_line=""
-    [[ "$persistent_keepalive" != "0" ]] && keepalive_line="PersistentKeepalive = $persistent_keepalive"
-
-    sudo tee "$conf_file" > /dev/null <<EOF
-[Interface]
-PrivateKey = $private_key
-# PublicKey = $public_key
-Address = $wg_interface_ip
-DNS = $dns
-MTU = $mtu
-$postup_rules
-[Peer]
-PublicKey = $server_public_key
-${psk_line}
-Endpoint = $endpoint
-AllowedIPs = $allowed_ips
-${keepalive_line}
-EOF
+    echo "$conf_content" | sudo tee "$conf_file" > /dev/null
 
     echo "Created configuration file at: $conf_file"
 
@@ -612,13 +656,50 @@ show_help() {
 
 # --- Main ---
 
+management_menu() {
+    local wg_interface="$1"
+
+    echo "WireGuard [$wg_interface]"
+    echo ""
+    echo "  1) List peers"
+    echo "  2) Add a peer"
+    echo "  3) Remove a peer"
+    echo "  4) Uninstall WireGuard"
+    echo "  5) Exit"
+    echo ""
+    local choice
+    choice="$(prompt "Choice" "5")"
+
+    case "$choice" in
+        1) list_peers "$wg_interface" ;;
+        2) add_peer "$wg_interface" ;;
+        3) remove_peer "$wg_interface" ;;
+        4)
+            local confirm
+            confirm="$(prompt "Are you sure? This will remove WireGuard and all configs (y/N)" "N")"
+            if [[ "$confirm" =~ ^[Yy]$ ]]; then
+                sudo systemctl stop "wg-quick@$wg_interface" 2>/dev/null || true
+                sudo systemctl disable "wg-quick@$wg_interface" 2>/dev/null || true
+                sudo rm -f "$(get_wg_conf_file "$wg_interface")"
+                sudo apt remove wireguard -y
+                sudo rm -f /etc/sysctl.d/99-wireguard.conf
+                sudo sysctl --system >/dev/null
+                echo "WireGuard uninstalled."
+            fi
+            ;;
+        5) exit 0 ;;
+        *) echo "Invalid choice." ;;
+    esac
+}
+
 main() {
     local action=""
-    local wg_interface="wg0"
+    local wg_interface=""
 
     while [[ $# -gt 0 ]]; do
         case "$1" in
             -h|--help) show_help; exit 0 ;;
+            -i|--install) action="install"; shift ;;
             -l|--list) action="list"; shift ;;
             -a|--add) action="add"; shift ;;
             -r|--remove) action="remove"; shift ;;
@@ -627,8 +708,19 @@ main() {
         esac
     done
 
-    # Direct action from flags
+    # Install goes straight to setup wizard
+    if [[ "$action" == "install" ]]; then
+        initial_setup
+        exit 0
+    fi
+
+    # Actions that need an interface
     if [[ -n "$action" ]]; then
+        wg_interface="$(pick_interface "$wg_interface")"
+        if [[ -z "$wg_interface" ]]; then
+            echo "No WireGuard interfaces found. Run: setup-wireguard -i"
+            exit 1
+        fi
         case "$action" in
             list) list_peers "$wg_interface" ;;
             add) add_peer "$wg_interface" ;;
@@ -637,46 +729,18 @@ main() {
         exit 0
     fi
 
-    # Check if WireGuard is already configured
-    local conf_file
-    conf_file="$(get_wg_conf_file "$wg_interface")"
-
-    if [[ -f "$conf_file" ]]; then
-        echo "WireGuard is already configured ($conf_file)."
-        echo ""
-        echo "What would you like to do?"
-        echo "  1) Add a peer"
-        echo "  2) List peers"
-        echo "  3) Remove a peer"
-        echo "  4) Uninstall WireGuard"
-        echo "  5) Exit"
-        echo ""
-        local choice
-        choice="$(prompt "Choice" "5")"
-
-        case "$choice" in
-            1) add_peer "$wg_interface" ;;
-            2) list_peers "$wg_interface" ;;
-            3) remove_peer "$wg_interface" ;;
-            4)
-                local confirm
-                confirm="$(prompt "Are you sure? This will remove WireGuard and all configs (y/N)" "N")"
-                if [[ "$confirm" =~ ^[Yy]$ ]]; then
-                    sudo systemctl stop "wg-quick@$wg_interface" 2>/dev/null || true
-                    sudo systemctl disable "wg-quick@$wg_interface" 2>/dev/null || true
-                    sudo rm -f "$conf_file"
-                    sudo apt remove wireguard -y
-                    sudo rm -f /etc/sysctl.d/99-wireguard.conf
-                    sudo sysctl --system >/dev/null
-                    echo "WireGuard uninstalled."
-                fi
-                ;;
-            5) exit 0 ;;
-            *) echo "Invalid choice." ;;
-        esac
-    else
-        initial_setup
+    # Default: auto-detect and show menu or offer install
+    wg_interface="$(pick_interface "$wg_interface")"
+    if [[ -z "$wg_interface" ]]; then
+        local run_setup
+        run_setup="$(prompt "No WireGuard interfaces found. Run setup?" "Y")"
+        if [[ "$run_setup" =~ ^[Yy]$ ]]; then
+            initial_setup
+        fi
+        exit 0
     fi
+
+    management_menu "$wg_interface"
 }
 
 main "$@"
