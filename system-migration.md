@@ -42,7 +42,6 @@ Don't restore these wholesale. Browse through both directories manually on the o
 
 | Path | What |
 |------|------|
-| `remmina/` | Remote desktop connections |
 | `kwalletrc` | KDE Wallet config |
 | `kglobalshortcutsrc` | Global keyboard shortcuts — review manually |
 | `kcminputrc` | Mouse/touchpad/keyboard settings — review manually |
@@ -63,7 +62,6 @@ Don't restore these wholesale. Browse through both directories manually on the o
 |------|------|
 | `color-schemes/` | Custom KDE color schemes |
 | `kwalletd/` | KDE Wallet data (passwords, secrets) |
-| `remmina/` | Saved remote desktop connections |
 | `konsole/` | Konsole profiles and color schemes |
 | `fonts/` | User-installed fonts |
 | `applications/` | Custom `.desktop` files |
@@ -210,6 +208,25 @@ Snap apps store config in `~/snap/<app>/current/` instead of `~/.config/`. The e
 | Zoom | `~/snap/zoom-client/current/.config/zoomus.conf` | `zoomus.conf` — meeting settings, audio/video preferences |
 
 **Note:** PyCharm classic snap uses standard `~/.config/` paths (same as .deb), so migration between .deb and snap is seamless. On first launch, PyCharm also auto-detects previous version configs and offers to import — if you have the old config dir at `~/.config/JetBrains/`, it should pick it up automatically.
+
+---
+
+## Flatpak Application Migration
+
+Flatpak apps store data in `~/.var/app/<app-id>/`. When migrating from apt to Flatpak (or between systems), copy to the Flatpak paths:
+
+| App | apt path | Flatpak path |
+|-----|----------|--------------|
+| Remmina connections | `~/.local/share/remmina/` | `~/.var/app/org.remmina.Remmina/data/remmina/` |
+| Remmina preferences | `~/.config/remmina/remmina.pref` | `~/.var/app/org.remmina.Remmina/config/remmina/remmina.pref` |
+
+```bash
+# Remmina: apt → Flatpak
+mkdir -p ~/.var/app/org.remmina.Remmina/data/remmina
+cp ~/.local/share/remmina/*.remmina ~/.var/app/org.remmina.Remmina/data/remmina/
+mkdir -p ~/.var/app/org.remmina.Remmina/config/remmina
+cp ~/.config/remmina/remmina.pref ~/.var/app/org.remmina.Remmina/config/remmina/
+```
 
 ---
 

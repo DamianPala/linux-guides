@@ -90,22 +90,15 @@ See [dotfiles/ghostty/config](dotfiles/ghostty/config) for the full file. Key se
 
 ## SSH and TERM
 
-Remote hosts don't have the `xterm-ghostty` terminfo entry, which causes broken rendering (missing colors, garbled output). Two approaches:
+Remote hosts don't have the `xterm-ghostty` terminfo entry, which causes broken rendering (missing colors, garbled output).
 
-**Override TERM on connect** (used in [aliases.sh](dotfiles/bashrc.d/aliases.sh)):
+The ssh wrapper in [aliases.sh](dotfiles/bashrc.d/aliases.sh) handles this automatically. On first connection to a host, it embeds the terminfo as base64 in the SSH command, installs it with `tic`, patches the remote `~/.bashrc`, and drops into a login shell. All in a single SSH connection (one password prompt). Subsequent connections skip installation (cached in `~/.cache/ssh-terminfo/`). Falls back to `xterm-256color` if `infocmp` is unavailable.
 
-```bash
-function ssh { TERM=xterm-256color command ssh "$@"; }
-export -f ssh
-```
-
-**Copy terminfo to remote host** (preserves Ghostty-specific features):
+**Manual install** (if not using the wrapper):
 
 ```bash
 infocmp -x xterm-ghostty | ssh user@host -- tic -x -
 ```
-
-The TERM override is simpler and works everywhere. Copying terminfo is better for servers you use frequently — it keeps features like undercurl and styled underlines.
 
 ---
 
