@@ -88,6 +88,26 @@ zvm install 0.14.0       # specific release
 
 ---
 
+## WireGuard
+
+Interactive setup script for WireGuard VPN — server or client mode, peer management (add/remove/list), QR codes, preshared keys, policy routing, iptables/nftables auto-detect.
+
+### Install
+
+```bash
+mkdir -p ~/.local/bin && curl -sL https://raw.githubusercontent.com/DamianPala/linux-guides/main/scripts/setup-wireguard.sh -o ~/.local/bin/setup-wireguard && chmod 755 ~/.local/bin/setup-wireguard
+```
+
+### Usage
+
+```bash
+setup-wireguard              # First run: setup wizard. Next runs: management menu
+setup-wireguard -l           # List peers
+setup-wireguard --help       # Full feature list
+```
+
+---
+
 ## Misc Apps
 
 ### apt
@@ -104,13 +124,13 @@ sudo apt update
 
 sudo apt install -y \
   baobab gimp k3b keepassxc meld obs-studio \
-  qbittorrent qtqr remmina simplescreenrecorder sqlitebrowser \
+  qbittorrent qtqr simplescreenrecorder sqlitebrowser \
   build-essential clang clang-format clang-tidy cmake git gh ninja-build pkg-config \
   libacl1-dev liblz4-dev libxxhash-dev libzstd-dev python3-dev \
   gdisk dislocker fzf htop iftop iotop jq lm-sensors logiops nethogs nload npm p7zip-full p7zip-rar pv \
   sd shellcheck shfmt \
   iperf3 nmap picocom qemu-system-x86 qemu-utils socat sshfs sshpass traceroute wireguard \
-  screen tmux trash-cli
+  screen tmux
 ```
 
 ### cargo
@@ -134,6 +154,8 @@ uv tool install hatch
 uv tool install ruff
 uv tool install pip-audit
 uv tool install pyright
+uv tool install trash-cli
+uv tool install yt-dlp
 ```
 
 ### go
@@ -168,11 +190,26 @@ flatpak remote-add --if-not-exists flathub https://flathub.org/repo/flathub.flat
 # Restart session after first flatpak install
 
 flatpak install flathub org.freecad.FreeCAD
+flatpak install flathub org.remmina.Remmina
 ```
+
+**Remmina** — apt version has no H.264 support, Flatpak does. Remove apt version first: `sudo apt remove remmina remmina-plugin-rdp`
+
+```bash
+# GTK3 crash on Wayland (bug #3122) — fallback to XWayland
+flatpak override --user --socket=fallback-x11 --nosocket=wayland org.remmina.Remmina
+# Dark theme for KDE Plasma
+flatpak install -y flathub org.gtk.Gtk3theme.Breeze-Dark
+flatpak override --user --env=GTK_THEME=Breeze-Dark org.remmina.Remmina
+```
+
+Set Color depth to **GFX AVC444** (best quality, needs H.264 on server) or **Automatic**. Migrating connections from apt → see [system-migration.md](system-migration.md#flatpak-application-migration).
 
 ### snap
 
 ```bash
+sudo snap set system refresh.timer=sun,03:00-04:00
+snap refresh --time
 sudo snap install audacity
 sudo snap install chromium
 sudo snap install code --classic
@@ -188,9 +225,8 @@ sudo snap install zoom-client
 
 ```bash
 npm config set prefix ~/.local
-npm install -g @anthropic-ai/claude-code@latest
-npm install -g @openai/codex@latest
-npm install -g agent-browser oxlint ccusage
+corepack enable --install-directory ~/.local/bin pnpm
+npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest agent-browser oxlint ccusage
 agent-browser install --with-deps
 ```
 
