@@ -129,3 +129,11 @@ ghostty +list-fonts            # installed fonts Ghostty can see
 ghostty +list-themes           # built-in themes
 ghostty +show-config           # dump effective config (with defaults)
 ```
+
+## Troubleshooting
+
+In case of ghostty freezes following may help on Linux:
+
+```
+sudo gdb -batch -ex 'generate-core-file /dev/null' -p $(pgrep -x ghostty)
+```

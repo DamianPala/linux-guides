@@ -1,0 +1,155 @@
+# Starship — productivity config (Nerd Font, bash-compatible)
+
+# Continuation prompt
+continuation_prompt = "[▶▶](dimmed white) "
+
+format = """
+$username\
+$hostname\
+$sudo\
+$directory\
+$git_branch\
+$git_commit\
+$git_state\
+$git_status\
+$package\
+$python\
+$rust\
+$nodejs\
+$java\
+$golang\
+$docker_context\
+$container\
+$fill\
+$shlvl\
+$jobs\
+$battery\
+$memory_usage\
+$cmd_duration\
+$status\
+$line_break\
+$character"""
+
+# --- Prompt character ---
+[character]
+success_symbol = "[❯](bold green)"
+error_symbol = "[❯](bold red)"
+vimcmd_symbol = "[❮](bold cyan)"
+
+# --- Core info ---
+[username]
+style_user = "bold cyan"
+style_root = "bold red"
+format = "[$user]($style)"
+show_always = true
+
+[hostname]
+style = "bold green"
+format = "[@$hostname]($style) "
+ssh_only = false
+
+[sudo]
+disabled = true
+
+# --- Directory ---
+[directory]
+style = "bold blue"
+truncation_length = 10
+truncate_to_repo = false
+truncation_symbol = "…/"
+repo_root_style = "bold underline blue"
+read_only = " "
+
+# --- Git ---
+[git_branch]
+format = "on [$symbol$branch(:$remote_branch)]($style) "
+symbol = " "
+style = "bold purple"
+
+[git_commit]
+format = '[\\($hash$tag\\)]($style) '
+tag_symbol = "  "
+
+[git_state]
+format = '[\($state( $progress_current/$progress_total)\)]($style) '
+
+[git_status]
+ahead = "⇡${count}"
+behind = "⇣${count}"
+diverged = "⇡${ahead_count}⇣${behind_count}"
+
+# --- Package ---
+[package]
+format = "is [ $version]($style) "
+
+# --- Languages ---
+[python]
+format = 'via [ ${version}( \($virtualenv\))]($style) '
+
+[rust]
+format = "via [ ${version}]($style) "
+
+[nodejs]
+format = "via [ ${version}]($style) "
+
+[java]
+format = "via [ ${version}]($style) "
+
+[golang]
+format = "via [ ${version}]($style) "
+
+# --- Docker ---
+[docker_context]
+format = "via [ ${context}]($style) "
+
+# --- Right-side info ---
+[shlvl]
+disabled = false
+threshold = 2
+format = "[$symbol$shlvl]($style) "
+symbol = "↕ "
+style = "bold yellow"
+
+[jobs]
+format = "[$symbol$number]($style) "
+symbol = " "
+style = "bold blue"
+number_threshold = 1
+
+[battery]
+format = "[$symbol$percentage]($style) "
+
+[[battery.display]]
+threshold = 20
+style = "bold red"
+
+[[battery.display]]
+threshold = 40
+style = "bold yellow"
+
+[memory_usage]
+disabled = false
+format = "via [󰍛 ${ram_pct}]($style) "
+style = "bold dimmed red"
+
+[cmd_duration]
+format = "took [$duration]($style) "
+style = "bold yellow"
+
+[status]
+disabled = false
+format = "[ $status( $signal_name)]($style) "
+style = "bold red"
+map_symbol = true
+
+# --- Fill ---
+[fill]
+symbol = " "
+
+# --- Disable noisy cloud modules ---
+[aws]
+disabled = true
+[gcloud]
+disabled = true
+[azure]
+disabled = true

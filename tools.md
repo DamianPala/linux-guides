@@ -4,6 +4,31 @@ Short setup notes for tools that don't need a full guide. Each entry covers inst
 
 ---
 
+## Starship
+
+Cross-shell prompt with git status, language versions, cmd duration, battery, and more. Requires a [Nerd Font](https://www.nerdfonts.com/) (see [ghostty.md](ghostty.md)).
+
+### Install
+
+```bash
+curl -sS https://starship.rs/install.sh | sh
+```
+
+### Configuration
+
+```bash
+cp dotfiles/starship.toml ~/.config/starship.toml
+```
+
+Key choices:
+- **Two-line prompt** — info on top, input on bottom (`$line_break` + `$character`)
+- **Right-aligned stats** — `$fill` pushes duration/battery/memory to the right
+- **Battery** — only shows below 40%
+- **Cloud modules disabled** — reduces noise if AWS/GCP/Azure CLIs are installed
+- **`shlvl`** — shows nested shell depth (threshold 2), useful for catching accidental subshells
+
+---
+
 ## lazygit
 
 Terminal UI for Git. Makes staging, committing, branching, and rebasing faster than raw git commands.
@@ -228,6 +253,12 @@ npm config set prefix ~/.local
 corepack enable --install-directory ~/.local/bin pnpm
 npm install -g @anthropic-ai/claude-code@latest @openai/codex@latest agent-browser oxlint ccusage
 agent-browser install --with-deps
+```
+
+### webi
+
+```bash
+curl -sS https://webi.sh/gh \| sh
 ```
 
 ### Separate

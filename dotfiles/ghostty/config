@@ -29,7 +29,7 @@ mouse-scroll-multiplier = 1
 # Clipboard
 copy-on-select = clipboard
 clipboard-trim-trailing-spaces = true
-clipboard-paste-protection = true
+clipboard-paste-protection = false
 clipboard-paste-bracketed-safe = true
 
 # Tabs & window
