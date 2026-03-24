@@ -522,7 +522,9 @@ keep_monthly: 6
 # Consistency checks
 checks:
     - name: repository
-      frequency: 1 week
+      frequency: 2 weeks
+      only_run_on:
+          - Saturday
     - name: archives
       frequency: 1 month
 
@@ -562,6 +564,9 @@ one_file_system: true
 compression: zstd
 statistics: true
 ssh_command: ssh -i /home/$USER/.ssh/backup_append_only
+
+extra_borg_options:
+    create: --progress
 EOF
 ```
 
@@ -611,7 +616,7 @@ Run a manual backup to verify everything works. For manual testing, you need to 
 
 ```bash
 read -rsp "Borg passphrase: " BORG_PASSPHRASE && echo
-sudo BORG_PASSPHRASE="$BORG_PASSPHRASE" borgmatic --progress --verbosity 1
+sudo BORG_PASSPHRASE="$BORG_PASSPHRASE" borgmatic --verbosity 1
 ```
 
 You should see:
@@ -631,7 +636,15 @@ borg list ssh://${NAS}${REPO_PATH}
 
 ## Step 10: Automate Backups
 
-Create systemd timer and service for daily backups:
+### Install borgmatic-wrapper
+
+The wrapper captures borg's progress output (JSON events emitted every ~0.5s) and throttles it to one human-readable line per 60 seconds in the journal. Without it, `extra_borg_options: create: --progress` (Step 8) would spam journald with raw JSON. All non-progress output (borgmatic phases, stats, errors) passes through unchanged.
+
+```bash
+sudo install -m 755 scripts/borgmatic-wrapper.py /usr/local/bin/borgmatic-wrapper
+```
+
+### Create systemd timer and service
 
 ```bash
 # Create timer
@@ -666,7 +679,7 @@ Environment="BORG_RSH=ssh -i /home/$USER/.ssh/backup_append_only"
 Environment="BORGMATIC_NOTIFY=1"
 
 # Pass passphrase to borgmatic via environment variable
-ExecStart=/bin/bash -c 'BORG_PASSPHRASE=$(cat \${CREDENTIALS_DIRECTORY}/borg-passphrase) /usr/local/bin/borgmatic --verbosity 1'
+ExecStart=/bin/bash -c 'BORG_PASSPHRASE=$(cat \${CREDENTIALS_DIRECTORY}/borg-passphrase) /usr/local/bin/borgmatic-wrapper --verbosity 1'
 
 # Clean up tray icon if borgmatic is killed before finish/fail hooks fire
 ExecStopPost=-/bin/bash -c 'systemctl stop borgmatic-tray-icon.service 2>/dev/null; rm -f /run/borgmatic-notify.start'
@@ -696,7 +709,7 @@ AmbientCapabilities=CAP_SYS_ADMIN
 EOF
 ```
 
-The service loads the encrypted credential and makes it available in `${CREDENTIALS_DIRECTORY}`. At runtime, systemd decrypts it and passes the passphrase to Borg via the `BORG_PASSPHRASE` environment variable.
+The service loads the encrypted credential and makes it available in `${CREDENTIALS_DIRECTORY}`. At runtime, systemd decrypts it and passes the passphrase to Borg via the `BORG_PASSPHRASE` environment variable. `borgmatic-wrapper` runs borgmatic as a subprocess, throttles borg's progress output to one `[progress]` line per 60 seconds, and passes everything else through unchanged.
 
 Enable and start:
 
@@ -725,8 +738,8 @@ Since borgmatic runs as root but notifications need the user's desktop session, 
 ### Install notification scripts
 
 ```bash
-sudo install -m 755 dotfiles/scripts/backup-notify.sh /usr/local/bin/
-sudo install -m 755 dotfiles/scripts/backup-tray-icon.py /usr/local/bin/
+sudo install -m 755 scripts/backup-notify.sh /usr/local/bin/
+sudo install -m 755 scripts/backup-tray-icon.py /usr/local/bin/
 ```
 
 The borgmatic hooks (Step 8 config) and `BORGMATIC_NOTIFY=1` switch (Step 10 service) are already included in those steps.
@@ -829,7 +842,9 @@ sudo tee /usr/local/bin/borg-maintenance.sh > /dev/null <<'EOF'
 #!/bin/bash
 set -euo pipefail
 
+# CONFIGURE: Set to your repository path and backup user (must match Step 3-5)
 REPO="/volume1/backup/laptop"
+REPO_OWNER="backup:users"
 LOG="/var/log/borg-maintenance.log"
 STATE_DIR="/var/lib/borg-maintenance"
 MIN_ARCHIVES=5          # Abort if fewer archives than this (possible mass-delete attack)
@@ -883,59 +898,72 @@ if [ "$BEFORE_COUNT" -lt "$MIN_ARCHIVES" ]; then
     log "Note: Only $BEFORE_COUNT archives exist (need $MIN_ARCHIVES for safety checks to activate)"
 fi
 
-# Check 3: Repository integrity (detect corruption/tampering before making anything permanent)
-log "Running repository check (repository-only)..."
-if ! borg check --repository-only "$REPO" 2>> "$LOG"; then
-    log "ABORT: Repository check failed. Do NOT compact until resolved."
-    exit 1
-fi
-log "Repository check passed"
-
-# Check 4: Monthly data verification (first Sunday of month — checksums all chunks)
-DAY_OF_MONTH=$(date +%d)
-if [ "$DAY_OF_MONTH" -le 7 ]; then
-    log "First week of month — running full data verification (--verify-data)..."
-    if ! borg check --verify-data "$REPO" 2>> "$LOG"; then
-        log "ABORT: Data verification failed. Chunks may be corrupted or tampered with."
+# Check 3: Repository integrity + prune/compact (every 2 weeks)
+# Prune and compact only run after a successful repo check to ensure
+# soft-deletes are never finalized on an unchecked repository.
+WEEK_NUM=$(date +%V)
+if [ $((WEEK_NUM % 2)) -eq 0 ]; then
+    log "Running repository check (repository-only)..."
+    if ! borg check --repository-only "$REPO" 2>> "$LOG"; then
+        log "ABORT: Repository check failed. Do NOT compact until resolved."
         exit 1
     fi
-    log "Data verification passed"
+    log "Repository check passed"
+
+    # Check 4: Quarterly data verification (Jan, Apr, Jul, Oct — first week)
+    DAY_OF_MONTH=$(date +%d)
+    MONTH=$(date +%m)
+    if [ "$DAY_OF_MONTH" -le 7 ] && echo "01 04 07 10" | grep -qw "$MONTH"; then
+        log "Quarterly data verification — running --verify-data..."
+        if ! borg check --verify-data "$REPO" 2>> "$LOG"; then
+            log "ABORT: Data verification failed. Chunks may be corrupted or tampered with."
+            exit 1
+        fi
+        log "Data verification passed"
+    fi
+
+    # --- Phase 2: Prune and compact ---
+
+    # Prune (mark archives for deletion per retention policy)
+    # NOTE: Keep these values in sync with borgmatic config (Step 8)
+    log "Pruning..."
+    borg prune --keep-daily=7 --keep-weekly=4 --keep-monthly=6 --list "$REPO" 2>&1 | tail -20 >> "$LOG" || {
+        log "ABORT: Prune failed."
+        exit 1
+    }
+
+    AFTER_COUNT=$(borg list --format '{archive}{NL}' "$REPO" 2>>"$LOG" | wc -l) || {
+        log "ABORT: Failed to list archives after prune."
+        exit 1
+    }
+    log "Archives after prune: $AFTER_COUNT (pruned $((BEFORE_COUNT - AFTER_COUNT)))"
+
+    # Compact (permanently removes soft-deleted data — no undo after this)
+    log "Compacting (threshold: ${COMPACT_THRESHOLD}%)..."
+    COMPACT_OUTPUT=$(borg compact --verbose --threshold "$COMPACT_THRESHOLD" "$REPO" 2>&1) || {
+        log "ABORT: Compact failed."
+        exit 1
+    }
+    if [ -n "$COMPACT_OUTPUT" ]; then
+        echo "$COMPACT_OUTPUT" | tail -5 >> "$LOG"
+    else
+        log "Compact: nothing to do (below ${COMPACT_THRESHOLD}% threshold)"
+    fi
 else
-    log "Skipping monthly data verification (day $DAY_OF_MONTH, runs on first week only)"
+    log "Skipping checks, prune, and compact (odd week, runs every 2 weeks)"
 fi
 
-# --- Phase 2: Prune and compact ---
+# --- Phase 3: Save state and fix permissions ---
 
-# Prune (mark archives for deletion per retention policy)
-# NOTE: Keep these values in sync with borgmatic config (Step 8)
-log "Pruning..."
-borg prune --keep-daily=7 --keep-weekly=4 --keep-monthly=6 --list "$REPO" 2>&1 | tail -20 >> "$LOG" || {
-    log "ABORT: Prune failed."
-    exit 1
-}
-
-AFTER_COUNT=$(borg list --format '{archive}{NL}' "$REPO" 2>>"$LOG" | wc -l) || {
-    log "ABORT: Failed to list archives after prune."
-    exit 1
-}
-log "Archives after prune: $AFTER_COUNT (pruned $((BEFORE_COUNT - AFTER_COUNT)))"
-
-# Compact (permanently removes soft-deleted data — no undo after this)
-log "Compacting (threshold: ${COMPACT_THRESHOLD}%)..."
-COMPACT_OUTPUT=$(borg compact --verbose --threshold "$COMPACT_THRESHOLD" "$REPO" 2>&1) || {
-    log "ABORT: Compact failed."
-    exit 1
-}
-if [ -n "$COMPACT_OUTPUT" ]; then
-    echo "$COMPACT_OUTPUT" | tail -5 >> "$LOG"
-else
-    log "Compact: nothing to do (below ${COMPACT_THRESHOLD}% threshold)"
+if [ $((WEEK_NUM % 2)) -eq 0 ]; then
+    # Restore ownership — borg running as root changes file owners, which blocks
+    # the append-only backup user from creating new archives via SSH.
+    chown -R "$REPO_OWNER" "$REPO"
 fi
 
-# --- Phase 3: Save state ---
-
-echo "$AFTER_COUNT" > "$PREV_COUNT_FILE"
-log "=== Maintenance completed. Final archive count: $AFTER_COUNT ==="
+FINAL_COUNT="${AFTER_COUNT:-$BEFORE_COUNT}"
+echo "$FINAL_COUNT" > "$PREV_COUNT_FILE"
+log "=== Maintenance completed. Final archive count: $FINAL_COUNT ==="
 EOF
 
 sudo chmod +x /usr/local/bin/borg-maintenance.sh
@@ -947,8 +975,8 @@ sudo chmod +x /usr/local/bin/borg-maintenance.sh
 |-------|---------|--------|
 | Minimum archive count | Attacker soft-deleted most/all archives | Aborts before compact |
 | Historical comparison | Sudden drop since last maintenance | Aborts if >50% archives vanished |
-| Repository integrity | Corruption, partial tampering | Aborts before compact finalizes damage |
-| Monthly data verification | Chunk-level corruption/bit rot | Aborts before compact (runs first week of month only) |
+| Repository integrity | Corruption, partial tampering | Aborts before compact (runs every 2 weeks) |
+| Quarterly data verification | Chunk-level corruption/bit rot | Aborts before compact (Jan, Apr, Jul, Oct — first week) |
 
 Archive count checks (1 and 2) only activate once the repo has reached MIN_ARCHIVES (5 by default). On a fresh setup it takes several days of daily backups to accumulate enough archives — the script logs this and proceeds without checks until then.
 
@@ -1547,10 +1575,13 @@ Monthly: restore random files. Quarterly: boot from a restored VM or spare disk.
 **Btrfs snapshots:**
 Borgmatic 1.9.4+ has native btrfs snapshot support—no external tools (btrbk, snapper) needed. It auto-detects subvolumes from `source_directories` and creates/cleans up snapshots automatically.
 
+**Progress reporting:**
+`borgmatic-wrapper` throttles borg's progress to one `[progress]` line per 60 seconds in journald, showing original size, deduplicated size, file count, and current path. Monitor with `journalctl -u borgmatic -f`. Do not use borgmatic's native `progress: true` or `--progress` CLI flag (those bypass the wrapper).
+
 **Borg check schedule:**
-- Weekly: `--repository-only` (fast, checks metadata)
-- Monthly: full check (verifies archive integrity)
-- Quarterly: `--verify-data` (slow, checksums all data blocks)
+- Every 2 weeks: `--repository-only` (fast, checks metadata and segments)
+- Monthly: archives check (verifies archive integrity, runs from borgmatic on laptop)
+- Quarterly: `--verify-data` (slow, checksums all data blocks, runs from NAS maintenance)
 
 **Storage layout rationale:**
 - Separate LUKS swap partition simplifies hibernation setup and avoids Btrfs swapfile limitations
