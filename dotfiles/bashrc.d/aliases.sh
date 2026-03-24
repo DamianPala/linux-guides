@@ -61,7 +61,7 @@ ssh() {
     # --- Terminfo auto-install ---
     # Install xterm-ghostty terminfo on remote (once per host, cached).
     # Enables undercurl, colored underlines, kitty keyboard in remote nvim.
-    if command -v infocmp &>/dev/null; then
+    if [[ "$TERM" == "xterm-ghostty" ]] && command -v infocmp &>/dev/null; then
         local _host _user _port
         while IFS=' ' read -r _k _v; do
             case "$_k" in
@@ -108,6 +108,10 @@ if [ -f ~/.bashrc ] && ! grep -q 'COLORTERM=truecolor' ~/.bashrc 2>/dev/null; th
     printf '\n[ "\$TERM" = "xterm-ghostty" ] && export COLORTERM=truecolor\n' >> ~/.bashrc
 fi
 cat /run/motd.dynamic 2>/dev/null || cat /etc/motd 2>/dev/null
+# Fall back if terminfo didn't install (e.g. no tic on Synology)
+if ! infocmp xterm-ghostty &>/dev/null 2>&1; then
+    export TERM=xterm-256color
+fi
 exec \$SHELL -l
 REMOTE
 )")
@@ -119,14 +123,39 @@ REMOTE
 
     # --- Connect ---
     local _start=$SECONDS
-    TERM="$_term" command ssh "${_opts[@]}" "$@" "${_remote_cmd[@]}"
-    local ret=$?
-    local _elapsed=$(( SECONDS - _start ))
+    local ret _elapsed
 
-    # Cache terminfo only after successful connection
-    if [[ "${_need_cache:-}" == 1 ]] && ((ret == 0)); then
-        mkdir -p "${_cache%/*}" 2>/dev/null
-        touch "$_cache"
+    if [[ "${_need_cache:-}" == 1 ]]; then
+        # First attempt with terminfo blob. Capture stderr to detect Windows
+        # hosts that reject the long remote command ("exec request failed").
+        # Password prompts use /dev/tty, not stderr, so redirect is safe.
+        local _stderr_file
+        _stderr_file="$(mktemp)"
+        TERM="$_term" command ssh "${_opts[@]}" "$@" "${_remote_cmd[@]}" 2>"$_stderr_file"
+        ret=$?
+        _elapsed=$(( SECONDS - _start ))
+
+        if ((ret != 0)) && grep -q "exec request failed" "$_stderr_file" 2>/dev/null; then
+            rm -f "$_stderr_file"
+            mkdir -p "${_cache%/*}" 2>/dev/null
+            touch "$_cache"
+            # Retry without blob or -t flag
+            _start=$SECONDS
+            TERM="xterm-256color" command ssh -o "SetEnv COLORTERM=truecolor" "$@"
+            ret=$?
+            _elapsed=$(( SECONDS - _start ))
+        else
+            cat "$_stderr_file" >&2
+            rm -f "$_stderr_file"
+            if ((ret == 0)); then
+                mkdir -p "${_cache%/*}" 2>/dev/null
+                touch "$_cache"
+            fi
+        fi
+    else
+        TERM="$_term" command ssh "${_opts[@]}" "$@"
+        ret=$?
+        _elapsed=$(( SECONDS - _start ))
     fi
 
     # --- Broken disconnect cleanup ---
