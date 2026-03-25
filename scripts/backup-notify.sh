@@ -87,7 +87,8 @@ stop_tray_icon() {
 
 # --- Duration tracking ---
 format_duration() {
-    local s=$1 m=$((s / 60))
+    local s=$1
+    local m=$((s / 60))
     s=$((s % 60))
     ((m > 0)) && echo "${m}m ${s}s" || echo "${s}s"
 }
