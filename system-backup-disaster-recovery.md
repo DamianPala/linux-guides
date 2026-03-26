@@ -1573,7 +1573,7 @@ sudo dracut -f --regenerate-all
 Monthly: restore random files. Quarterly: boot from a restored VM or spare disk. Annually: full disaster recovery drill.
 
 **Btrfs snapshots:**
-Borgmatic 1.9.4+ has native btrfs snapshot support—no external tools (btrbk, snapper) needed. It auto-detects subvolumes from `source_directories` and creates/cleans up snapshots automatically.
+Borgmatic 1.9.4+ has native btrfs snapshot support—no external tools (btrbk, snapper) needed. It auto-detects subvolumes from `source_directories` and creates/cleans up snapshots automatically. These temporary snapshots are for backup consistency only. For local hourly snapshots and quick file recovery, see [system-snapshot-rollback.md](system-snapshot-rollback.md).
 
 **Progress reporting:**
 `borgmatic-wrapper` throttles borg's progress to one `[progress]` line per 60 seconds in journald, showing original size, deduplicated size, file count, and current path. Monitor with `journalctl -u borgmatic -f`. Do not use borgmatic's native `progress: true` or `--progress` CLI flag (those bypass the wrapper).
