@@ -208,36 +208,23 @@ sudo snapper -c home set-config \
     TIMELINE_LIMIT_MONTHLY=1
 ```
 
-### Enable quota (optional)
+### Disable quota
 
-Quota lets Snapper track how much space snapshots consume and delete old ones when limits are reached (`SPACE_LIMIT`, `FREE_LIMIT` in config). Without quota, Snapper relies purely on count limits (hourly/daily/etc.), which is fine for most setups.
+Btrfs quota (qgroup) tracking adds significant I/O overhead. With quota enabled, every snapshot deletion triggers qgroup accounting for every freed extent, stalling disk I/O for minutes or hours even on modern kernels. On a desktop workload, quota provides no practical benefit: count-based retention (hourly/daily limits) handles cleanup well enough, and `btrfs filesystem usage` shows overall space.
 
-**With quota:**
-
-```bash
-sudo snapper -c root setup-quota
-sudo snapper -c home setup-quota
-```
-
-Recommended settings after enabling:
-
-```bash
-for config in root home; do
-    sudo snapper -c "$config" set-config \
-        SPACE_LIMIT=0.2 \
-        FREE_LIMIT=0.2
-done
-```
-
-This caps snapshot space at ~20% of the filesystem and triggers extra cleanup when free space drops below 20%.
-
-**Tradeoff:** Btrfs quota tracking adds I/O overhead. On some systems, cleanup with quota enabled can cause disk stalls for 30-60 seconds. Newer kernels (6.x) handle this better, but if you notice I/O hangs during cleanup, disable quota:
+Disable it and clear Snapper's QGROUP references (stale QGROUP values can silently prevent snapshot creation on some kernels):
 
 ```bash
 sudo btrfs quota disable /
+sudo snapper -c root set-config QGROUP=""
+sudo snapper -c home set-config QGROUP=""
 ```
 
-**Without quota:** count limits alone handle retention. Snapshots are deleted by age, not by space. This works well when your daily data churn is predictable (typical desktop workload). If you skip quota, no extra configuration needed.
+Some tools enable quota automatically without telling you (e.g. Incus enables it when creating a btrfs storage pool). After setup, verify it's off:
+
+```bash
+sudo btrfs quota status /
+```
 
 ### Enable timers
 
@@ -248,13 +235,31 @@ systemctl cat snapper-timeline.timer > /dev/null && systemctl cat snapper-cleanu
 sudo systemctl enable --now snapper-timeline.timer snapper-cleanup.timer
 ```
 
+The default cleanup timer runs hourly, which is unnecessary. Once daily is enough. Override:
+
+```bash
+sudo systemctl edit snapper-cleanup.timer
+```
+
+Add:
+
+```ini
+[Timer]
+OnBootSec=
+OnUnitActiveSec=
+OnCalendar=*-*-* 22:00:00
+Persistent=true
+```
+
+This runs cleanup at 22:00 daily. `Persistent=true` catches up after sleep/shutdown.
+
 Check they're scheduled:
 
 ```bash
 systemctl list-timers | grep snapper
 ```
 
-`snapper-timeline.timer` fires hourly, `snapper-cleanup.timer` fires daily.
+`snapper-timeline.timer` fires hourly, `snapper-cleanup.timer` fires once daily at 22:00.
 
 ## Step 5: System integration
 
@@ -277,15 +282,6 @@ else
     mkdir -p ~/.config
     printf '[General]\nexclude folders[$e]=/.snapshots/,/home/.snapshots/\n' >> ~/.config/baloofilerc
 fi
-```
-
-### Clear QGROUP if quota is disabled
-
-Snapper may set `QGROUP="1/0"` in config files even when quota is off. On some kernel versions this causes snapshot creation to silently fail (no error, just no snapshot). Clear it:
-
-```bash
-sudo snapper -c root set-config QGROUP=""
-sudo snapper -c home set-config QGROUP=""
 ```
 
 ### Verify cleanup timer is running
@@ -389,7 +385,7 @@ sudo snapper -c root list --disable-used-space
 sudo snapper -c home list --disable-used-space
 ```
 
-Without `--disable-used-space`, listing can take 20-30s on large filesystems (it walks the extent tree to calculate each snapshot's size). With quota enabled, the space column is fast.
+Without `--disable-used-space`, listing can take 20-30s on large filesystems (it walks the extent tree to calculate each snapshot's size).
 
 ### Compare two points in time
 
@@ -454,7 +450,7 @@ sudo systemctl start snapper-timeline.timer
 
 **Backup tools with Btrfs snapshots:** Some backup tools (e.g. borgmatic with `btrfs: {}`) create their own temporary Btrfs snapshots for consistency during backup. These are independent from Snapper and cleaned up automatically. The two don't interfere.
 
-**Space pressure:** Keep 15-20% free on your Btrfs volume. With quota enabled, Snapper uses `SPACE_LIMIT` and `FREE_LIMIT` to trigger extra cleanup. Without quota, count limits (hourly/daily) are the only control. Manual cleanup if needed:
+**Space pressure:** Keep 15-20% free on your Btrfs volume. Count limits (hourly/daily) are the only automatic control. Manual cleanup if needed:
 
 ```bash
 sudo snapper -c root cleanup timeline
@@ -475,7 +471,6 @@ If Btrfs is completely stuck (can't write metadata to delete), run a null rebala
 **Full rollback caveats on Ubuntu:** `snapper rollback` changes the Btrfs default subvolume. Ubuntu's fstab has `subvol=@` hardcoded, which overrides that. Full system rollback requires either removing `subvol=@` from fstab (and using `btrfs subvolume set-default` instead) or using `grub-btrfs` to boot from snapshots. None of this matters for file-level recovery, where `undochange` and manual copy from `/.snapshots/` work without fstab changes.
 
 **Updating Snapper:** Built from source, so `apt upgrade` won't touch it. To update, repeat Step 1 (clone or `git fetch --tags`, checkout latest tag, build, install).
-```
 
 ## References
 
