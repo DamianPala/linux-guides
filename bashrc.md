@@ -12,7 +12,7 @@ Bash configuration split into a clean base `~/.bashrc` and modular `~/.bashrc.d/
   aliases.sh           ← eza, bat, nvim, grep, ssh wrapper, open
   ai.sh                ← Claude Code + Codex shortcuts
   completions.sh       ← tab-completion for bat, fd, rg, fzf
-  history.sh           ← large crash-safe history
+  history.sh           ← large crash-safe history + Atuin integration
   navigation.sh        ← cdspell, globstar, CDPATH
   rsyncssh.sh          ← rsync-over-SSH wrapper
   zellij.sh            ← auto-rename tab to cwd
@@ -50,7 +50,7 @@ type refresh    # should show: refresh is aliased to `source ~/.bashrc'
 
 ## Prompt
 
-When Starship is installed (the default), it manages the prompt entirely via `zzz-starship.sh`. The section below describes the **fallback** prompt used when Starship is not available.
+When Starship is installed (the default), it manages the prompt entirely via `zzz-starship.sh` and the fallback prompt in the base bashrc is skipped. The section below describes the **fallback** prompt used when Starship is not installed.
 
 The fallback uses `__git_ps1` via `PROMPT_COMMAND` (not a static PS1) with root = red, non-root = cyan username, and color-coded git status:
 
@@ -143,11 +143,15 @@ Codex functions run in a subshell with isolated `CODEX_HOME` and symlinked auth/
 Dynamic tab-completion for CLI tools that don't ship system completions. Each entry is guarded with `command -v` — safe to load even if the tool isn't installed.
 
 - `bat`, `fd`, `rg` — flag/path completion
-- `fzf` — keybindings (**Ctrl+R** fuzzy history, **Ctrl+T** file picker, **Alt+C** cd into dir) + completion
+- `fzf` — keybindings (**Ctrl+T** file picker, **Alt+C** cd into dir, **Ctrl+R** fuzzy history when Atuin is not installed) + completion
 
 Tools that already have system or user completions (delta, zellij) are skipped.
 
 ### history.sh
+
+Bash history settings + [Atuin](https://github.com/atuinsh/atuin) integration (optional).
+
+**Bash history** (always active):
 
 - `HISTSIZE=500000` — half a million entries in memory
 - `HISTFILESIZE=500000` — matches HISTSIZE (no truncation across sessions)
@@ -156,6 +160,14 @@ Tools that already have system or user completions (delta, zellij) are skipped.
 - `HISTTIMEFORMAT='%F %T  '` — timestamps in `history` output
 - `histverify` — recalled commands go to the prompt for editing, not immediate execution
 - `history -a` via precmd hook — flush after every command (no lost history on crash)
+
+**[Atuin](https://github.com/atuinsh/atuin)** (optional, see [tools.md](tools.md#atuin) for install):
+
+When installed, Atuin takes over history search. When not installed, bash history + fzf Ctrl+R work as fallback.
+
+- **Ctrl+R** — full-screen fuzzy search across all sessions. Press Ctrl+R again inside the TUI to cycle filter modes (global/host/session/directory)
+- **Up/Down** — prefix search (type `git`, press Up to cycle through git commands)
+- History stored in SQLite (`~/.local/share/atuin/history.db`), separate from `~/.bash_history`
 
 ### navigation.sh
 

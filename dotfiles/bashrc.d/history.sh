@@ -28,3 +28,10 @@ shopt -s histverify
 __history_flush() {
     history -a
 }
+
+# Atuin (optional) — must init before Starship (alphabetical order handles this)
+[[ -f "$HOME/.atuin/bin/env" ]] && . "$HOME/.atuin/bin/env"
+if command -v atuin &>/dev/null; then
+    [[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
+    eval "$(atuin init bash)"
+fi

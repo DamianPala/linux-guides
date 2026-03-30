@@ -33,10 +33,10 @@ if ! shopt -oq posix; then
 fi
 
 # ---------------------------------------------------------------------------
-# Prompt (skipped when Starship is active — it manages its own prompt)
+# Prompt (skipped when Starship is installed — it manages its own prompt)
 # ---------------------------------------------------------------------------
 
-if [[ -z "${STARSHIP_SHELL-}" ]]; then
+if ! command -v starship &>/dev/null; then
 
     # Detect color support
     case "$TERM" in

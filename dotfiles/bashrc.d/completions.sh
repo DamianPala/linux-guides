@@ -11,7 +11,7 @@ fi
 command -v rg &>/dev/null && eval "$(rg --generate complete-bash)"
 [[ -f ~/.hatch-complete.bash ]] && . ~/.hatch-complete.bash
 
-# fzf: keybindings (Ctrl+R, Ctrl+T, Alt+C) + completion
+# fzf: keybindings (Ctrl+T, Alt+C, and Ctrl+R when Atuin is not installed) + completion
 # fzf --bash requires 0.48+; Ubuntu 24.04 ships 0.44
 if command -v fzf &>/dev/null; then
     _fzf_init="$(fzf --bash 2>/dev/null)"
@@ -21,4 +21,6 @@ if command -v fzf &>/dev/null; then
         source /usr/share/doc/fzf/examples/key-bindings.bash
     fi
     unset _fzf_init
+    # Atuin owns Ctrl+R when installed — unbind fzf's version
+    command -v atuin &>/dev/null && bind -r '"\C-r"' 2>/dev/null
 fi

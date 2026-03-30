@@ -29,6 +29,48 @@ Key choices:
 
 ---
 
+## Atuin
+
+Shell history stored in SQLite instead of a flat file. Every command gets tagged with the working directory, exit code, and duration, so you can search by context, not just text. Replaces bash's Ctrl+R and Up arrow. See [bashrc.md](bashrc.md#historysh) for keybindings and shell integration.
+
+### Install
+
+```bash
+bash <(curl --proto '=https' --tlsv1.2 -sSf https://setup.atuin.sh)
+```
+
+The installer asks several questions:
+
+| Question | Answer | Why |
+|----------|--------|-----|
+| Import existing shell history? | **Y** | Imports `~/.bash_history` into Atuin's SQLite |
+| Sign up for sync account? | **n** | Local-only for a single machine. `atuin register` later if needed |
+| Enable Atuin AI? | **n** | Unnecessary if you have other AI tools |
+| Enable Atuin Daemon? | **Y** | Background process for faster search and sync |
+
+### Post-install cleanup
+
+The installer appends init lines to `~/.bashrc`. The `history.sh` module handles everything (PATH, bash-preexec, init), so remove all three lines the installer added:
+
+```bash
+# REMOVE all of these (history.sh handles them):
+. "$HOME/.atuin/bin/env"
+[[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
+eval "$(atuin init bash)"
+```
+
+### Configuration
+
+```toml
+# ~/.config/atuin/config.toml
+search_mode = "daemon-fuzzy"  # daemon-accelerated fuzzy (or: fuzzy, prefix, fulltext, skim)
+inline_height = 20            # TUI height in lines (0 = fullscreen)
+```
+
+Press Ctrl+R to open the Atuin search TUI. Type a partial command and use arrow keys to navigate results.
+
+---
+
 ## lazygit
 
 Terminal UI for Git. Makes staging, committing, branching, and rebasing faster than raw git commands.
