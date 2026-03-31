@@ -234,6 +234,49 @@ After creating, test via TTY: Ctrl+Alt+F2 → log in as `rescue` → `sudo whoam
 
 ---
 
+## Full SysRq (REISUB)
+
+Ubuntu's default sysrq bitmask (176) disables the keys you actually need when the desktop freezes: R (raw keyboard), E and I (kill processes). When kwin_wayland hangs, it holds the keyboard hostage, so Ctrl+Alt+F3 won't work. SysRq+R takes input back from the compositor and TTY switching starts working again.
+
+The restricted default is a multi-user server thing. On a single-user laptop, `sysrq=1` is fine.
+
+### Setup
+
+```bash
+# Takes effect immediately
+echo 1 | sudo tee /proc/sys/kernel/sysrq
+
+# Survives reboot
+echo 'kernel.sysrq = 1' | sudo tee /etc/sysctl.d/90-sysrq.conf
+```
+
+### Verify
+
+```bash
+# Should return 1
+cat /proc/sys/kernel/sysrq
+```
+
+### When the desktop freezes
+
+**Step 1: Take keyboard back**
+
+`Alt+SysRq+R`
+
+**Step 2: Try switching to TTY**
+
+`Ctrl+Alt+F3` — if you get a login prompt, the GPU recovered. Log in and restart the session:
+
+```bash
+sudo systemctl restart sddm
+```
+
+**Step 3: If TTY is black or unresponsive, do a clean reboot**
+
+Hold Alt+SysRq and press each key with a few seconds between: `E` (SIGTERM all) → `I` (SIGKILL stragglers) → `S` (sync) → `U` (remount read-only) → `B` (reboot).
+
+---
+
 ## Hardware Clock: UTC (Dual-Boot)
 
 On dual-boot with Windows, clocks get out of sync — Windows uses localtime, Linux uses UTC, so each boot "corrects" the clock wrong.
