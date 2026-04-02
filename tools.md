@@ -65,6 +65,8 @@ eval "$(atuin init bash)"
 # ~/.config/atuin/config.toml
 search_mode = "daemon-fuzzy"  # daemon-accelerated fuzzy (or: fuzzy, prefix, fulltext, skim)
 inline_height = 20            # TUI height in lines (0 = fullscreen)
+filter_mode_shell_up_key_binding = "session-preload"  # Up arrow = session, falls back to host history in new terminals
+workspaces = true             # auto-filter by git repo when in a workspace
 ```
 
 Press Ctrl+R to open the Atuin search TUI. Type a partial command and use arrow keys to navigate results.
