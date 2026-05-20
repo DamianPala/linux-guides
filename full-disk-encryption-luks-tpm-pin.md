@@ -526,11 +526,30 @@ CONF
 ```bash
 dracut -f --regenerate-all
 
+# Use a unique GRUB_DISTRIBUTOR so future Kubuntu installs on this machine
+# (recovery system, dual-boot, test) don't collide with this install in
+# /boot/efi/EFI/Kubuntu/. With "Kubuntu-Main" reserved for this install,
+# any subsequent Kubuntu installer lands cleanly in EFI/Kubuntu/.
+if grep -q '^GRUB_DISTRIBUTOR=' /etc/default/grub; then
+  sed -i "s/^GRUB_DISTRIBUTOR=.*/GRUB_DISTRIBUTOR='Kubuntu-Main'/" /etc/default/grub
+else
+  echo "GRUB_DISTRIBUTOR='Kubuntu-Main'" >> /etc/default/grub
+fi
+
 grub-install --target=x86_64-efi --efi-directory=/boot/efi \
-  --bootloader-id=Kubuntu --uefi-secure-boot
+  --bootloader-id=Kubuntu-Main --uefi-secure-boot
 
 update-grub
 ```
+
+> **Note on EFI cleanup:** the temporary Calamares install (Step 3) created `/boot/efi/EFI/Kubuntu/` and a corresponding `Kubuntu` UEFI boot entry. After the steps above, the final system uses `EFI/Kubuntu-Main/` instead. The leftover `EFI/Kubuntu/` is a harmless orphan (the bootstrap inside still points to the same `/boot/grub/grub.cfg`), but you can remove it after first successful boot:
+>
+> ```bash
+> sudo rm -rf /boot/efi/EFI/Kubuntu
+> # Find the orphan boot entry and remove it
+> ORPHAN=$(efibootmgr | awk -F'*' '/Kubuntu[^-]/{gsub("Boot",""); print $1; exit}')
+> [ -n "$ORPHAN" ] && sudo efibootmgr -B -b "$ORPHAN"
+> ```
 
 **Verify initramfs was created:**
 
