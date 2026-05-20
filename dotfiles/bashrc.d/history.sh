@@ -1,4 +1,4 @@
-# shellcheck shell=bash
+# shellcheck shell=bash disable=SC1090,SC1091
 # history.sh — Enhanced bash history
 
 # Erase duplicates across entire history + ignore lines starting with space
@@ -34,6 +34,11 @@ __history_flush() {
 if command -v atuin &>/dev/null; then
     [[ -f ~/.bash-preexec.sh ]] && source ~/.bash-preexec.sh
     eval "$(atuin init bash)"
+    if declare -F atuin-bind >/dev/null && ! bind -S 2>/dev/null | grep -q '^\\C-r outputs '; then
+        atuin-bind -m emacs '\C-r' atuin-search-emacs
+        atuin-bind -m vi-insert '\C-r' atuin-search-viins
+        atuin-bind -m vi-command '/' atuin-search-emacs
+    fi
     # Workaround: bash-preexec may not fire preexec for the first command in a
     # new terminal (Ghostty + bash 5.2). Detect and record it on the next precmd.
     # Skip the first invocation (__bp_install's manual precmd before any user input).
