@@ -53,6 +53,81 @@ alias alert='notify-send --urgency=low -i "$([ $? = 0 ] && echo terminal || echo
 
 # SSH wrapper: auto-install xterm-ghostty terminfo + terminal cleanup after
 # broken disconnects. Ghostty ssh-env/ssh-terminfo must be DISABLED.
+_ssh_has_remote_command() {
+    local _arg _dest_seen=0 _skip_next=0 _stop_options=0
+
+    for _arg in "$@"; do
+        if ((_skip_next)); then
+            _skip_next=0
+            continue
+        fi
+
+        if ((_dest_seen)); then
+            return 0
+        fi
+
+        if ((_stop_options == 0)); then
+            case "$_arg" in
+                --)
+                    _stop_options=1
+                    continue
+                    ;;
+                -[BbcDEeFIiJLlmOoPpQRSWw])
+                    _skip_next=1
+                    continue
+                    ;;
+                -[BbcDEeFIiJLlmOoPpQRSWw]?* | -*)
+                    continue
+                    ;;
+            esac
+        fi
+
+        _dest_seen=1
+    done
+
+    return 1
+}
+
+_ssh_local_only_or_tunnel() {
+    local _arg
+
+    for _arg in "$@"; do
+        case "$_arg" in
+            -G | -G* | -Q | -Q* | -V | -N | -f | -W | -W* | -L | -L* | -R | -R* | -D | -D*)
+                return 0
+                ;;
+        esac
+    done
+
+    return 1
+}
+
+_ssh_probe_remote_terminfo_tools() {
+    # shellcheck disable=SC2016 # Expanded by the remote shell, not locally.
+    local _probe='command -v infocmp >/dev/null 2>&1 \
+&& command -v tic >/dev/null 2>&1 \
+&& command -v base64 >/dev/null 2>&1 \
+&& { [ -n "${SHELL:-}" ] || command -v sh >/dev/null 2>&1; }'
+
+    TERM=xterm-256color command ssh \
+        -o "SetEnv COLORTERM=truecolor" \
+        -o BatchMode=yes \
+        -o ConnectTimeout="${SSH_TERMINFO_PROBE_TIMEOUT:-5}" \
+        "$@" "$_probe" </dev/null >/dev/null 2>&1
+}
+
+_ssh_terminfo_hint() {
+    local _user="$1" _host="$2"
+    local _hint_cache="$HOME/.cache/ssh-terminfo/inconclusive/${_user}@${_host}:${3:-22}"
+
+    [[ -t 2 && ! -f "$_hint_cache" ]] || return 0
+    mkdir -p "${_hint_cache%/*}" 2>/dev/null
+    touch "$_hint_cache" 2>/dev/null
+    printf 'Ghostty terminfo auto-install skipped: probe could not authenticate/check host.\n' >&2
+    printf 'Run once to force install:\n' >&2
+    printf '  SSH_TERMINFO_FORCE=1 ssh %s@%s\n' "$_user" "$_host" >&2
+}
+
 ssh() {
     local _term="xterm-256color"
     local _opts=(-o "SetEnv COLORTERM=truecolor")
@@ -61,7 +136,11 @@ ssh() {
     # --- Terminfo auto-install ---
     # Install xterm-ghostty terminfo on remote (once per host, cached).
     # Enables undercurl, colored underlines, kitty keyboard in remote nvim.
-    if [[ "$TERM" == "xterm-ghostty" ]] && command -v infocmp &>/dev/null; then
+    if [[ -z "${SSH_NO_TERMINFO:-}" ]] \
+        && [[ "$TERM" == "xterm-ghostty" ]] \
+        && command -v infocmp &>/dev/null \
+        && ! _ssh_local_only_or_tunnel "$@" \
+        && ! _ssh_has_remote_command "$@"; then
         local _host _user _port
         while IFS=' ' read -r _k _v; do
             case "$_k" in
@@ -73,23 +152,32 @@ ssh() {
 
         if [[ -n "$_host" ]]; then
             local _cache="$HOME/.cache/ssh-terminfo/${_user}@${_host}:${_port}"
+            local _unsupported_cache="$HOME/.cache/ssh-terminfo/unsupported/${_user}@${_host}:${_port}"
 
-            if [[ -f "$_cache" ]]; then
+            if [[ -f "$_cache" && -z "${SSH_TERMINFO_FORCE:-}" ]]; then
                 _term="xterm-ghostty"
-            else
-                local _ti_b64
-                _ti_b64=$(infocmp -0 -x xterm-ghostty 2>/dev/null | base64 -w0)
-                if [[ -n "$_ti_b64" ]]; then
-                    _term="xterm-ghostty"
-                    # Inline install: embed terminfo as base64 in the remote
-                    # command, then exec login shell. One connection, one
-                    # password, MOTD preserved. Only on first connect per host.
-                    _opts+=(-t)
-                    _remote_cmd=("$(cat <<REMOTE
-if ! infocmp xterm-ghostty &>/dev/null 2>&1; then
-    if command -v tic &>/dev/null; then
+            elif [[ -n "${SSH_TERMINFO_FORCE:-}" ]] \
+                || [[ ! -f "$_unsupported_cache" || -n "${SSH_TERMINFO_RECHECK:-}" ]]; then
+                local _probe_ret=0
+                if [[ -z "${SSH_TERMINFO_FORCE:-}" ]]; then
+                    _ssh_probe_remote_terminfo_tools "$@"
+                    _probe_ret=$?
+                fi
+                if ((_probe_ret == 0)); then
+                    local _ti_b64
+                    _ti_b64=$(infocmp -0 -x xterm-ghostty 2>/dev/null | base64 -w0)
+                    if [[ -n "$_ti_b64" ]]; then
+                        _term="xterm-ghostty"
+                        # Inline install: embed terminfo as base64 in the remote
+                        # command, then exec login shell. One connection, one
+                        # password, MOTD preserved. Only on first connect per host.
+                        _opts+=(-t)
+                        _remote_cmd=("$(command cat <<REMOTE
+if ! infocmp xterm-ghostty >/dev/null 2>&1; then
+    if command -v tic >/dev/null 2>&1; then
         if echo '${_ti_b64}' | base64 -d | tic -x - 2>/dev/null; then
-            if ! echo '${_ti_b64}' | base64 -d | sudo -n tic -x -o /usr/share/terminfo - 2>/dev/null; then
+            if command -v sudo >/dev/null 2>&1 \
+                 && ! echo '${_ti_b64}' | base64 -d | sudo -n tic -x -o /usr/share/terminfo - 2>/dev/null; then
                 printf '\n  \033[33m⚠ terminfo installed for your user only. Run this to fix sudo:\033[0m\n'
                 printf '  sudo cp ~/.terminfo/x/xterm-ghostty /usr/share/terminfo/x/\n\n'
             fi
@@ -109,13 +197,22 @@ if [ -f ~/.bashrc ] && ! grep -q 'COLORTERM=truecolor' ~/.bashrc 2>/dev/null; th
 fi
 cat /run/motd.dynamic 2>/dev/null || cat /etc/motd 2>/dev/null
 # Fall back if terminfo didn't install (e.g. no tic on Synology)
-if ! infocmp xterm-ghostty &>/dev/null 2>&1; then
+if ! infocmp xterm-ghostty >/dev/null 2>&1; then
     export TERM=xterm-256color
 fi
-exec \$SHELL -l
+if [ -n "\${SHELL:-}" ]; then
+    exec "\$SHELL" -l
+fi
+exec sh -l
 REMOTE
 )")
-                    local _need_cache=1
+                        local _need_cache=1
+                    fi
+                elif ((_probe_ret == 255)); then
+                    _ssh_terminfo_hint "$_user" "$_host" "$_port"
+                elif ((_probe_ret != 255)); then
+                    mkdir -p "${_unsupported_cache%/*}" 2>/dev/null
+                    touch "$_unsupported_cache" 2>/dev/null
                 fi
             fi
         fi
@@ -145,7 +242,7 @@ REMOTE
             ret=$?
             _elapsed=$(( SECONDS - _start ))
         else
-            cat "$_stderr_file" >&2
+            command cat "$_stderr_file" >&2
             rm -f "$_stderr_file"
             if ((ret == 0)); then
                 mkdir -p "${_cache%/*}" 2>/dev/null
@@ -183,7 +280,7 @@ REMOTE
     fi
     return $ret
 }
-export -f ssh
+export -f _ssh_has_remote_command _ssh_local_only_or_tunnel _ssh_probe_remote_terminfo_tools _ssh_terminfo_hint ssh
 
 # Open files/URLs in GUI apps (macOS-style)
 # open file         → default app (xdg-open)
@@ -219,3 +316,6 @@ alias sudo='sudo '
 
 # Reload bashrc
 alias refresh='source ~/.bashrc'
+
+# VS Code
+alias code='ELECTRON_OZONE_PLATFORM_HINT=wayland command code'

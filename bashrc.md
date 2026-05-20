@@ -100,14 +100,18 @@ Hook execution order (after each command):
 | `refresh` | `source ~/.bashrc` |
 | `alert` | Desktop notification after long command |
 
-Includes an `ssh()` wrapper function (exported with `export -f` so scripts inherit it):
+Includes an `ssh()` wrapper function (exported with helper functions so scripts inherit it):
 
-- **Terminfo auto-install**: on first connection to a host, embeds `xterm-ghostty` terminfo as base64 in the SSH command and installs it inline with `tic`. Single SSH connection, single password prompt. Patches the remote `~/.bashrc` to recognize `xterm-ghostty` in color detection and sets `COLORTERM=truecolor`. Displays MOTD after install (`/run/motd.dynamic` on Ubuntu, `/etc/motd` elsewhere). Caches the result in `~/.cache/ssh-terminfo/`. Subsequent connections skip installation and use plain interactive SSH. Falls back to `xterm-256color` if `infocmp` is unavailable
+- **Terminfo auto-install**: on first connection to a capable host, probes for `infocmp`, `tic`, `base64`, and a usable shell, then embeds `xterm-ghostty` terminfo as base64 in the SSH command and installs it inline with `tic`. Patches the remote `~/.bashrc` to recognize `xterm-ghostty` in color detection and sets `COLORTERM=truecolor`. Displays MOTD after install (`/run/motd.dynamic` on Ubuntu, `/etc/motd` elsewhere). Caches successful installs in `~/.cache/ssh-terminfo/`. Hosts that connect successfully but lack the required tools are cached in `~/.cache/ssh-terminfo/unsupported/` and use `xterm-256color`. Network/auth/host-key failures during the probe are not cached as unsupported
 - **System-wide install**: tries `sudo -n tic` (non-interactive) to install into `/usr/share/terminfo/` so `sudo` commands that use `tput` can find the entry. If passwordless sudo isn't available, shows a one-liner to run manually. On read-only filesystems (e.g. PiKVM), shows a command to install from the local machine
 - Sets `COLORTERM=truecolor` via `SetEnv` for servers with `AcceptEnv COLORTERM`
+- Skips terminfo bootstrap for user-supplied remote commands, `ssh -G`, `ssh -N`, `ssh -W`, `ssh -L`, `ssh -R`, `ssh -D`, and background/tunnel-style invocations
 - On broken disconnect (SSH exit code 255 after session >3s): multi-pass terminal cleanup without clearing the screen. Suppresses echo, disables kitty keyboard protocol + mouse tracking + bracketed paste, leaves alternate screen, drains input buffer in rounds, then restores line discipline with `stty sane`. Preserves screen content (no RIS). Only triggers on SSH connection errors (code 255), not on non-zero remote command exit codes (1-254). Short-lived failures (connection refused, auth fail) skip cleanup entirely. If the terminal is still garbled, run `reset` manually
 - **Requires** Ghostty `ssh-env` and `ssh-terminfo` to be **disabled** in `shell-integration-features` (they overwrite the function after bashrc loads)
 - To force re-install terminfo on a host: `rm ~/.cache/ssh-terminfo/<user>@<host>:<port>`
+- To re-check a host previously marked unsupported: `SSH_TERMINFO_RECHECK=1 ssh <host>` or remove `~/.cache/ssh-terminfo/unsupported/<user>@<host>:<port>`
+- To force terminfo bootstrap after an inconclusive auth/network probe: `SSH_TERMINFO_FORCE=1 ssh <host>`
+- To disable terminfo bootstrap for one command: `SSH_NO_TERMINFO=1 ssh <host>`
 
 Also includes an `open()` function for opening files/URLs in GUI apps from the terminal (macOS-style):
 
