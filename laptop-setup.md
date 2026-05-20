@@ -4,47 +4,146 @@ Hardware-specific tweaks for running Kubuntu on Expertbook B9403.
 
 ---
 
-## Disable USB/Bluetooth Wake from Sleep
+## Disable Spurious Wakeup Sources
 
-Prevents laptop from randomly waking up due to Bluetooth or USB interrupts.
+Prevents laptop from randomly waking up from s2idle, especially with a Thunderbolt dock connected.
+
+**Disabled:** XHCI (USB), TXHC/TDM0/TRP0/TRP1 (Thunderbolt), PEG0 (PCIe), GLAN (Ethernet), PXSX (Thunderbolt downstream, via sysfs).
+**Left enabled:** Lid switch, ACPI alarm (AWAC).
+
+The script checks current state before toggling (`/proc/acpi/wakeup` is toggle-based, not set-based). Duplicate ACPI names (PXSX has 5 entries) are handled via sysfs to avoid flipping all at once.
+
+Runs via **system-sleep hook** before every suspend.
 
 ### Setup
 
 ```bash
-# Create the script
-sudo tee /usr/local/sbin/disable-xhci-wake.sh << 'EOF'
+sudo tee /usr/local/sbin/disable-wakeup-sources.sh << 'SCRIPT'
 #!/bin/bash
-echo XHCI > /proc/acpi/wakeup
+set -euo pipefail
+
+# Disable ACPI wakeup sources that cause spurious wakeups from s2idle,
+# especially with a Thunderbolt dock connected.
+#
+# /proc/acpi/wakeup is toggle-based (write flips state), so we check
+# current state before writing to avoid accidentally enabling a source.
+#
+# Duplicate ACPI names (e.g. PXSX) cannot be toggled
+# individually through /proc/acpi/wakeup — all entries flip at once.
+# Those are handled via sysfs instead.
+#
+# Managed by: disable-wakeup-sources-sleep-hook.sh (system-sleep hook)
+
+ACPI_WAKEUP=/proc/acpi/wakeup
+# Sources safe to toggle via /proc/acpi/wakeup (unique names only)
+ACPI_SOURCES=(
+    XHCI # USB controller (Bluetooth/USB peripherals)
+    TXHC # Thunderbolt host controller
+    TDM0 # Thunderbolt DMA engine
+    TRP0 # Thunderbolt PCIe root port 0
+    TRP1 # Thunderbolt PCIe root port 1
+    PEG0 # PCIe Graphics/NVMe slot
+    GLAN # Ethernet (Wake-on-LAN)
+)
+
+# Sources with duplicate ACPI names — disable via sysfs path directly.
+# Format: "sysfs_path  # comment"
+SYSFS_SOURCES=(
+    "/sys/devices/pci0000:00/0000:00:07.0/0000:02:00.0/power/wakeup  # PXSX - Thunderbolt PCIe downstream"
+)
+
+log() {
+    echo "$1"
+}
+
+disabled=0
+already_off=0
+missing=0
+errors=0
+
+# --- ACPI toggle sources (unique names) ---
+
+if [[ ! -f "$ACPI_WAKEUP" ]]; then
+    log "ERROR: $ACPI_WAKEUP not found"
+    exit 1
+fi
+
+for src in "${ACPI_SOURCES[@]}"; do
+    line=$(grep -E "^${src}\s" "$ACPI_WAKEUP" || true)
+
+    if [[ -z "$line" ]]; then
+        log "MISSING: $src not in ACPI wakeup table"
+        ((missing += 1))
+        continue
+    fi
+
+    # Bail if there are multiple entries (ambiguous toggle)
+    count=$(echo "$line" | wc -l)
+    if ((count > 1)); then
+        log "ERROR: $src has $count entries, cannot toggle safely — use SYSFS_SOURCES"
+        ((errors += 1))
+        continue
+    fi
+
+    if echo "$line" | grep -q '\*enabled'; then
+        echo "$src" >"$ACPI_WAKEUP"
+        log "DISABLED: $src (ACPI toggle)"
+        ((disabled += 1))
+    else
+        log "OK: $src already disabled"
+        ((already_off += 1))
+    fi
+done
+
+# --- sysfs sources (for duplicates or fine-grained control) ---
+
+for entry in "${SYSFS_SOURCES[@]}"; do
+    # Split on "  # " delimiter (double-space + hash + space)
+    path="${entry%%  #*}"
+    comment="${entry#*# }"
+    # Fallback if entry has no comment
+    [[ "$comment" == "$entry" ]] && comment="$path"
+
+    if [[ ! -f "$path" ]]; then
+        log "MISSING: $path not found ($comment)"
+        ((missing += 1))
+        continue
+    fi
+
+    current=$(cat "$path")
+    if [[ "$current" == "enabled" ]]; then
+        echo "disabled" >"$path"
+        log "DISABLED: $path ($comment)"
+        ((disabled += 1))
+    else
+        log "OK: $path already disabled ($comment)"
+        ((already_off += 1))
+    fi
+done
+
+log "Done: disabled=$disabled already_off=$already_off missing=$missing errors=$errors"
+SCRIPT
+sudo chmod +x /usr/local/sbin/disable-wakeup-sources.sh
+
+sudo tee /usr/lib/systemd/system-sleep/disable-wakeup-sources-sleep-hook.sh << 'EOF'
+#!/bin/bash
+# Re-run wakeup source disabling before suspend to catch
+# dynamically attached devices (e.g. Thunderbolt dock).
+case "$1" in
+    pre) /usr/local/sbin/disable-wakeup-sources.sh ;;
+esac
 EOF
-sudo chmod +x /usr/local/sbin/disable-xhci-wake.sh
-
-# Create systemd service
-sudo tee /etc/systemd/system/disable-xhci-wake.service << 'EOF'
-[Unit]
-Description=Disable XHCI wake from Bluetooth/USB
-After=multi-user.target
-
-[Service]
-Type=oneshot
-ExecStart=/usr/local/sbin/disable-xhci-wake.sh
-
-[Install]
-WantedBy=multi-user.target
-EOF
-
-# Enable and start
-sudo systemctl daemon-reload
-sudo systemctl enable --now disable-xhci-wake.service
+sudo chmod +x /usr/lib/systemd/system-sleep/disable-wakeup-sources-sleep-hook.sh
 ```
 
 ### Verify
 
 ```bash
-# Check service status
-systemctl status disable-xhci-wake.service
+# Manual test
+sudo /usr/local/sbin/disable-wakeup-sources.sh
 
-# Check XHCI is disabled (should show "disabled")
-cat /proc/acpi/wakeup | grep XHCI
+# All should show *disabled
+cat /proc/acpi/wakeup | grep -E 'XHCI|TXHC|TDM0|TRP0|TRP1|PEG0|GLAN'
 ```
 
 ---
@@ -176,7 +275,7 @@ Settings to configure after a fresh install. Paths follow Plasma 6 System Settin
   - KWin → Move Window to Center: `Meta+C`
   - Shortcuts → Add New → Command (name → command → shortcut):
     - **Clean Copy AI** → `wl-copy "$(wl-paste | sed 's/^  //; s/[[:space:]]*$//')"` → `Ctrl+Shift+X`
-    - **Restart Plasmashell** → `systemctl --user restart plasma-plasmashell.service` → `Meta+F9`
+    - **KDE Smart Refresh** → `~/.local/bin/kde-refresh.sh` → `Meta+F9` (reconfigure KWin + reload animation effects + restart plasmashell — fixes stuck CPU after suspend/dock without logout, see [`scripts/kde-refresh.sh`](scripts/kde-refresh.sh))
     - **Restart KDE** → `systemctl --user restart plasma-kwin_wayland.service plasma-plasmashell.service plasma-powerdevil.service` → `Meta+F10`
 
 **Mouse & Touchpad:**
