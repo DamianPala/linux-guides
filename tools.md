@@ -202,13 +202,31 @@ sudo apt install -y \
   screen tmux
 ```
 
+### Third-party repos
+
+**VirtualBox**
+
+```bash
+wget -O- https://www.virtualbox.org/download/oracle_vbox_2016.asc \
+  | sudo gpg --dearmor -o /usr/share/keyrings/oracle-virtualbox-2016.gpg
+sudo tee /etc/apt/sources.list.d/virtualbox.sources > /dev/null << EOF
+Types: deb
+URIs: https://download.virtualbox.org/virtualbox/debian
+Suites: $(lsb_release -cs)
+Components: contrib
+Signed-By: /usr/share/keyrings/oracle-virtualbox-2016.gpg
+Architectures: amd64
+EOF
+sudo apt update && sudo apt install virtualbox-7.2
+```
+
 ### cargo
 
 ```bash
 curl --proto '=https' --tlsv1.2 -sSf https://sh.rustup.rs | sh
 source ~/.cargo/env
 cargo install --locked \
-  ast-grep bat bottom cargo-careful cargo-deny difftastic du-dust eza fd-find \
+  ast-grep bat bottom cargo-careful cargo-deny difftastic du-dust eza fd-find fnm \
   git-delta prek ripgrep tealdeer uv worktrunk
 sudo ln -s ~/.cargo/bin/{eza,bat,fd,rg} /usr/local/bin/
 ```
@@ -319,5 +337,4 @@ curl -sS https://webi.sh/gh \| sh
 | Signal | https://signal.org/download/linux/ |
 | Speedtest CLI | https://www.speedtest.net/apps/cli |
 | Synology Drive | https://www.synology.com/en-global/support/download |
-| VirtualBox | https://www.virtualbox.org/wiki/Linux_Downloads |
 
