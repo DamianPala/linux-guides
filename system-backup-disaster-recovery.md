@@ -127,8 +127,10 @@ command -v uv &>/dev/null || { curl -LsSf https://astral.sh/uv/install.sh | sh &
 
 # Install borg and borgmatic system-wide (to /usr/local/bin)
 UV=$(which uv)
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool install borgbackup
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool install borgmatic
+sudo env UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+  "$UV" tool install --managed-python --python 3.14 'borgbackup<2'
+sudo env UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+  "$UV" tool install --managed-python --python 3.14 'borgmatic[browse]'
 ```
 
 Verify versions (Borg 1.4.3+, borgmatic 2.1.x+ required):
@@ -141,8 +143,11 @@ borgmatic --version
 **Upgrading later:**
 ```bash
 UV=$(which uv)
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool upgrade borgbackup
-sudo UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin "$UV" tool upgrade borgmatic
+sudo "$UV" python upgrade --install-dir /opt/uv-python 3.14
+sudo env UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+  "$UV" tool install --force --upgrade --managed-python --python 3.14 'borgbackup<2'
+sudo env UV_TOOL_DIR=/opt/uv-tools UV_TOOL_BIN_DIR=/usr/local/bin UV_PYTHON_INSTALL_DIR=/opt/uv-python \
+  "$UV" tool install --force --upgrade --managed-python --python 3.14 'borgmatic[browse]'
 ```
 
 ## Step 3: NAS Preparation (Synology)
@@ -1066,6 +1071,17 @@ borg list ssh://${NAS}${REPO_PATH}::archive-name home/yourusername/Documents
 
 # Search for a file across an archive
 borg list ssh://${NAS}${REPO_PATH}::archive-name | grep "filename"
+
+# Interactive browser (requires borgmatic[browse], installed in Step 2)
+borgmatic browse
+```
+
+### Compare Archives
+
+Check what changed between two archives:
+
+```bash
+borgmatic diff --archive latest --second-archive archive-name --only-patterns
 ```
 
 ### Extract Files
